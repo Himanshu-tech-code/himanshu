@@ -1,0 +1,119 @@
+{
+  "name": "Kids Shorts Pipeline",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "hours", "hoursInterval": 8 } ] }
+      },
+      "id": "node-schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [ 240, 300 ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            { "name": "job", "value": "={{ $now.toMillis() }}" },
+            { "name": "topic", "value": "a shy little cloud learns to make rain" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-setjob",
+      "name": "Set Job",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [ 460, 300 ]
+    },
+    {
+      "parameters": {
+        "command": "=cd /workspace/youtube-automation && python scripts/generate_script.py --job {{ $('Set Job').item.json.job }} --topic \"{{ $('Set Job').item.json.topic }}\""
+      },
+      "id": "node-script",
+      "name": "Generate Script",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [ 680, 300 ]
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "chatId": "REPLACE_WITH_YOUR_CHAT_ID",
+        "message": "=Review the script for job {{ $('Set Job').item.json.job }} (output/<job>/script.json). Approve to continue?",
+        "approvalOptions": { "values": { "approvalType": "double" } }
+      },
+      "id": "node-approve-script",
+      "name": "Approve Script",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [ 900, 300 ]
+    },
+    {
+      "parameters": {
+        "command": "=cd /workspace/youtube-automation && python scripts/generate_voiceover.py --job {{ $('Set Job').item.json.job }}"
+      },
+      "id": "node-voice",
+      "name": "Voiceover",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [ 1120, 300 ]
+    },
+    {
+      "parameters": {
+        "command": "=cd /workspace/youtube-automation && python scripts/generate_images.py --job {{ $('Set Job').item.json.job }}"
+      },
+      "id": "node-images",
+      "name": "Images",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [ 1340, 300 ]
+    },
+    {
+      "parameters": {
+        "command": "=cd /workspace/youtube-automation && python scripts/assemble_video.py --job {{ $('Set Job').item.json.job }}"
+      },
+      "id": "node-assemble",
+      "name": "Assemble",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [ 1560, 300 ]
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "chatId": "REPLACE_WITH_YOUR_CHAT_ID",
+        "message": "=Final video ready for job {{ $('Set Job').item.json.job }} (output/<job>/video.mp4). Approve to upload?",
+        "approvalOptions": { "values": { "approvalType": "double" } }
+      },
+      "id": "node-approve-video",
+      "name": "Approve Video",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [ 1780, 300 ]
+    },
+    {
+      "parameters": {
+        "command": "=cd /workspace/youtube-automation && python scripts/upload_youtube.py --job {{ $('Set Job').item.json.job }} --privacy private"
+      },
+      "id": "node-upload",
+      "name": "Upload",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [ 2000, 300 ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [ [ { "node": "Set Job", "type": "main", "index": 0 } ] ] },
+    "Set Job": { "main": [ [ { "node": "Generate Script", "type": "main", "index": 0 } ] ] },
+    "Generate Script": { "main": [ [ { "node": "Approve Script", "type": "main", "index": 0 } ] ] },
+    "Approve Script": { "main": [ [ { "node": "Voiceover", "type": "main", "index": 0 } ] ] },
+    "Voiceover": { "main": [ [ { "node": "Images", "type": "main", "index": 0 } ] ] },
+    "Images": { "main": [ [ { "node": "Assemble", "type": "main", "index": 0 } ] ] },
+    "Assemble": { "main": [ [ { "node": "Approve Video", "type": "main", "index": 0 } ] ] },
+    "Approve Video": { "main": [ [ { "node": "Upload", "type": "main", "index": 0 } ] ] }
+  }
+}
