@@ -4,14 +4,26 @@ Writes output/<job>/script.json. This file is APPROVAL #1: review/edit it before
 running the later stages.
 
     python scripts/generate_script.py --job 123 --topic "a shy cloud learns to rain"
+    python scripts/generate_script.py --job 123 --from-research   # use top researched topic
 """
 import argparse
+import json
 from typing import List
 
 import anthropic
 from pydantic import BaseModel, Field
 
-from common import env, prompt_text, save_script
+from common import env, job_dir, prompt_text, save_script
+
+
+def topic_from_research(job_id: str) -> str:
+    """Read the top-ranked topic from Stage 0's topics.json."""
+    path = job_dir(job_id) / "topics.json"
+    if not path.exists():
+        raise SystemExit("No topics.json — run research_trends.py first, or pass --topic.")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    top = data["topics"][0]
+    return f"{top['topic']} — {top['angle']}"
 
 
 class Scene(BaseModel):
@@ -57,10 +69,19 @@ def generate(topic: str) -> Story:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--job", required=True)
-    ap.add_argument("--topic", required=True)
+    ap.add_argument("--topic", help="Explicit topic. Omit and use --from-research instead.")
+    ap.add_argument("--from-research", action="store_true",
+                    help="Use the top topic from output/<job>/topics.json (Stage 0).")
     args = ap.parse_args()
 
-    story = generate(args.topic)
+    if args.from_research:
+        topic = topic_from_research(args.job)
+    elif args.topic:
+        topic = args.topic
+    else:
+        ap.error("Pass --topic or --from-research")
+
+    story = generate(topic)
     save_script(args.job, story.model_dump())
 
     print(f"✅ Wrote output/{args.job}/script.json")

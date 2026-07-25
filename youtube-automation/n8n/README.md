@@ -6,12 +6,16 @@ wiring below — a few fields depend on your environment and can't be baked in.
 
 ## The flow
 ```
-Schedule Trigger → Set Job (topic) → Generate Script
+Schedule Trigger → Set Job → Research Trends → Generate Script
    → 🔔 Approve Script  (Send and Wait)
    → Voiceover → Images → Assemble
    → 🔔 Approve Video   (Send and Wait)
    → Upload
 ```
+**Research Trends** researches currently-viral, kid-safe topics (Claude + web search) and writes
+`topics.json`; **Generate Script** then builds the story from the top-ranked topic
+(`--from-research`). Want to approve the *topic* too? Drop a third "Send and Wait" node between
+Research Trends and Generate Script and have it show `topics.json`.
 
 ## After importing — wiring checklist
 

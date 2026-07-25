@@ -31,7 +31,17 @@
     },
     {
       "parameters": {
-        "command": "=cd /workspace/youtube-automation && python scripts/generate_script.py --job {{ $('Set Job').item.json.job }} --topic \"{{ $('Set Job').item.json.topic }}\""
+        "command": "=cd /workspace/youtube-automation && python scripts/research_trends.py --job {{ $('Set Job').item.json.job }} --count 5"
+      },
+      "id": "node-research",
+      "name": "Research Trends",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [ 680, 140 ]
+    },
+    {
+      "parameters": {
+        "command": "=cd /workspace/youtube-automation && python scripts/generate_script.py --job {{ $('Set Job').item.json.job }} --from-research"
       },
       "id": "node-script",
       "name": "Generate Script",
@@ -108,7 +118,8 @@
   ],
   "connections": {
     "Schedule Trigger": { "main": [ [ { "node": "Set Job", "type": "main", "index": 0 } ] ] },
-    "Set Job": { "main": [ [ { "node": "Generate Script", "type": "main", "index": 0 } ] ] },
+    "Set Job": { "main": [ [ { "node": "Research Trends", "type": "main", "index": 0 } ] ] },
+    "Research Trends": { "main": [ [ { "node": "Generate Script", "type": "main", "index": 0 } ] ] },
     "Generate Script": { "main": [ [ { "node": "Approve Script", "type": "main", "index": 0 } ] ] },
     "Approve Script": { "main": [ [ { "node": "Voiceover", "type": "main", "index": 0 } ] ] },
     "Voiceover": { "main": [ [ { "node": "Images", "type": "main", "index": 0 } ] ] },
