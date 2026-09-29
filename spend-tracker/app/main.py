@@ -37,6 +37,8 @@ def plaid() -> PlaidClient:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    with db() as conn:  # apply any updated built-in rules to existing, non-manual rows
+        recategorize_all(conn)
     stop = threading.Event()
 
     def poll():  # fallback for when webhooks aren't reachable (typical for a local-only app)

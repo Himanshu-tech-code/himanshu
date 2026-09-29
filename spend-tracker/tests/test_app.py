@@ -52,6 +52,8 @@ def test_categorize_precedence():
     assert categorize("STARBUCKS #12", None, None, None, [("starbucks", "Entertainment")]) == ("Entertainment", "rule")
     assert categorize("ACME LLC", None, "MEDICAL", None, []) == ("Health", "plaid")
     assert categorize("ACME LLC", None, None, None, []) == ("Other", "default")
+    assert categorize("AUTOMATIC PAYMENT - THANK", None, "LOAN_PAYMENTS", None, [])[0] == "Transfers"
+    assert categorize("CITI", None, "LOAN_PAYMENTS", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", [])[0] == "Transfers"
 
 
 def test_sync_paginates_and_preserves_manual_category():

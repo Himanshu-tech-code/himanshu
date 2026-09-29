@@ -33,7 +33,8 @@ KEYWORDS = [
     ("Fees", ["overdraft", "service fee", "monthly fee", "atm fee", "interest charge", "late fee"]),
     ("Education", ["tuition", "coursera", "udemy", "university", "college"]),
     ("Income", ["payroll", "direct dep", "salary", "paycheck"]),
-    ("Transfers", ["transfer", "e-transfer", "zelle", "venmo", "cash app", "payment thank you", "autopay"]),
+    ("Transfers", ["transfer", "e-transfer", "zelle", "venmo", "cash app", "payment thank", "payment - thank",
+                   "automatic payment", "autopay", "credit card payment"]),
 ]
 
 PLAID_PRIMARY = {
@@ -69,6 +70,8 @@ def categorize(name: str, merchant: str | None, plaid_primary: str | None,
         if any(w in text for w in words):
             return category, "rule"
 
+    if plaid_detailed == "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT":  # paying your own card: not new spend
+        return "Transfers", "plaid"
     if plaid_detailed == "FOOD_AND_DRINK_GROCERIES":
         return "Groceries", "plaid"
     if plaid_primary in PLAID_PRIMARY:
