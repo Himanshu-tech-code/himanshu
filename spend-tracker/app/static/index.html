@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spend Tracker</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main id="login" hidden>
+  <h1>Spend Tracker</h1>
+  <form id="login-form">
+    <input type="password" id="pw" placeholder="Password" autocomplete="current-password" required>
+    <button>Unlock</button>
+    <p id="login-err" class="err"></p>
+  </form>
+</main>
+
+<main id="app" hidden>
+  <header>
+    <h1>Spend Tracker</h1>
+    <div class="actions">
+      <button id="connect">+ Connect bank</button>
+      <button id="sync" class="ghost">Sync now</button>
+      <button id="logout" class="ghost">Lock</button>
+    </div>
+  </header>
+
+  <section class="controls">
+    <select id="month"></select>
+    <select id="cat"><option value="">All categories</option></select>
+    <input id="search" placeholder="Search merchant…">
+  </section>
+
+  <section class="cards">
+    <div class="card"><span>Spent</span><b id="spent">–</b></div>
+    <div class="card"><span>Income</span><b id="income">–</b></div>
+  </section>
+
+  <section><h2>By category</h2><div id="breakdown"></div></section>
+  <section><h2>Transactions</h2>
+    <table><thead><tr><th>Date</th><th>Description</th><th>Account</th><th class="r">Amount</th><th>Category</th></tr></thead>
+    <tbody id="txns"></tbody></table>
+  </section>
+
+  <details><summary>Connected accounts</summary><div id="accounts"></div></details>
+  <details><summary>Categorization rules</summary>
+    <div id="rules"></div>
+    <form id="rule-form"><input id="rule-pattern" placeholder="Merchant contains…" required>
+      <select id="rule-cat"></select><button>Add rule</button></form>
+  </details>
+</main>
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

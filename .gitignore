@@ -4,3 +4,10 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# spend-tracker secrets & data
+spend-tracker/.env
+spend-tracker/data/
+spend-tracker/.venv/
+__pycache__/
+.pytest_cache/
