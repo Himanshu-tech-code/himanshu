@@ -1,0 +1,445 @@
+<title>Spend Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: a paycheck ledger. Summary strip, then add-expense, then month detail beside the plan & advice. */
+:root{
+  --bg:#f2f5f3; --surface:#ffffff; --ink:#16201c; --muted:#5a6a63; --line:#dbe3df;
+  --accent:#0d7556; --accent-ink:#ffffff; --need:#4a6fa5; --want:#c7802a; --bad:#bf3f38; --soft:#e7efeb;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1413; --surface:#171e1c; --ink:#e5ece8; --muted:#93a39c; --line:#2a3431;
+  --accent:#3fcf9b; --accent-ink:#05231a; --need:#86aee3; --want:#e9aa5e; --bad:#f07a70; --soft:#1d2724; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1413; --surface:#171e1c; --ink:#e5ece8; --muted:#93a39c; --line:#2a3431;
+  --accent:#3fcf9b; --accent-ink:#05231a; --need:#86aee3; --want:#e9aa5e; --bad:#f07a70; --soft:#1d2724; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:28px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:17px;font-weight:600}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+header{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.monthnav{display:flex;align-items:center;gap:6px}
+.monthnav b{min-width:130px;text-align:center;font-family:var(--display);font-size:17px}
+button,input,select{font:inherit;color:inherit}
+input,select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button.link{border:0;background:none;padding:4px 6px;color:var(--muted)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.strip>div{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.strip .big{font-family:var(--display);font-size:24px;font-weight:700}
+.strip .sub{font-size:13px;color:var(--muted)}
+.pos{color:var(--accent)} .neg{color:var(--bad)}
+form.add{display:grid;grid-template-columns:140px 110px 1fr 170px auto;gap:8px}
+.grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:130px 1fr 84px;gap:10px;align-items:center;font-size:14px}
+.track{height:10px;background:var(--soft);border-radius:5px;overflow:hidden}
+.track i{display:block;height:100%;border-radius:5px}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--muted)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:1px}
+.list{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:62px 1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.row:first-child{border-top:0}
+.chip{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.fixed .row{grid-template-columns:1fr auto auto auto}
+.fixed input{padding:5px 8px}
+.meter{height:14px;background:var(--soft);border-radius:7px;position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:7px}
+.meter b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+ul.tips{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px}
+ul.tips li::marker{color:var(--accent)}
+.ai{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.6}
+.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.notice{background:var(--soft);border-radius:10px;padding:12px 14px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}.strip{grid-template-columns:1fr 1fr}form.add{grid-template-columns:1fr 1fr}form.add input[id=f-note]{grid-column:1/-1}}
+@media (max-width:420px){.bar{grid-template-columns:96px 1fr 70px}.row{grid-template-columns:52px 1fr auto}.row .chip{display:none}}
+@media (prefers-reduced-motion:no-preference){.track i,.meter i{transition:width .3s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="label">Personal ledger</div>
+      <h1>Spend Tracker</h1>
+    </div>
+    <div class="monthnav">
+      <button id="prev" aria-label="Previous month">‹</button>
+      <b id="month-label" class="num"></b>
+      <button id="next" aria-label="Next month">›</button>
+    </div>
+  </header>
+
+  <div id="status" class="notice" hidden></div>
+
+  <section class="strip" aria-label="Month summary">
+    <div><span class="label">Take-home</span><span class="big num" id="s-income">–</span><span class="sub" id="s-income-sub"></span></div>
+    <div><span class="label">Fixed bills</span><span class="big num" id="s-fixed">–</span><span class="sub" id="s-fixed-sub"></span></div>
+    <div><span class="label">Everyday spend</span><span class="big num" id="s-var">–</span><span class="sub" id="s-var-sub"></span></div>
+    <div><span class="label">Left over</span><span class="big num" id="s-left">–</span><span class="sub" id="s-left-sub"></span></div>
+  </section>
+
+  <form class="add panel" id="add-form" autocomplete="off">
+    <input type="date" id="f-date" required aria-label="Date">
+    <input type="number" id="f-amount" step="0.01" min="0.01" placeholder="Amount $" required aria-label="Amount">
+    <input id="f-note" placeholder="What was it? e.g. Costco, Uber, dinner" maxlength="80" aria-label="Description">
+    <select id="f-cat" aria-label="Category"></select>
+    <button class="primary" id="f-submit">Add expense</button>
+  </form>
+
+  <div class="grid2">
+    <div class="col">
+      <section class="panel">
+        <div class="inline" style="justify-content:space-between">
+          <h2>Where it went</h2>
+          <div class="legend"><span><span class="dot" style="background:var(--need)"></span>Needs</span><span><span class="dot" style="background:var(--want)"></span>Wants</span></div>
+        </div>
+        <div class="bars" id="bars"></div>
+      </section>
+      <section class="panel">
+        <h2>Expenses this month</h2>
+        <div class="list" id="expenses"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <div class="inline" style="justify-content:space-between">
+          <h2>Investing goal</h2>
+          <label class="inline muted" style="font-size:14px">$<input type="number" id="goal" min="0" step="50" style="width:90px"> / month</label>
+        </div>
+        <div class="meter" aria-hidden="true"><i id="goal-fill"></i><b id="goal-mark"></b></div>
+        <div id="goal-text" class="muted" style="font-size:14px"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Where to cut</h2>
+        <ul class="tips" id="tips"></ul>
+      </section>
+
+      <section class="panel" id="ai-panel">
+        <h2>Ask Claude</h2>
+        <p class="muted" style="margin:0;font-size:14px">Gets a written review of this month and a plan to reach your investing goal. Uses your Claude account.</p>
+        <input id="ai-q" placeholder="Optional question, e.g. can I afford a $1,200 trip in December?" maxlength="300">
+        <div class="inline"><button class="primary" id="ai-go">Analyze my spending</button><button id="ai-stop" hidden>Stop</button></div>
+        <div class="ai" id="ai-out" hidden></div>
+      </section>
+
+      <section class="panel fixed">
+        <div class="inline" style="justify-content:space-between">
+          <h2>Paycheck &amp; fixed bills</h2>
+          <button class="link" id="edit-toggle">Edit</button>
+        </div>
+        <div class="list" id="fixed"></div>
+        <form id="fixed-add" class="inline" hidden>
+          <input id="fa-name" placeholder="Bill name" required style="flex:1 1 140px">
+          <input id="fa-amt" type="number" step="0.01" min="0" placeholder="$" required style="width:100px">
+          <select id="fa-freq"><option value="monthly">monthly</option><option value="biweekly">biweekly</option><option value="weekly">weekly</option><option value="yearly">yearly</option></select>
+          <select id="fa-cat"></select>
+          <button>Add bill</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</div>
+<div id="toast" hidden></div>
+
+<script>
+const CATS = ["Groceries","Dining","Transport","Shopping","Bills & Utilities","Housing","Health","Entertainment","Travel","Subscriptions","Family Support","Fees","Education","Transfers","Other"];
+const NEEDS = new Set(["Groceries","Transport","Bills & Utilities","Housing","Health","Education","Fees","Family Support"]);
+const CUT = {Dining:.3, Shopping:.3, Entertainment:.25, Subscriptions:.25, Travel:.2, Other:.2, Groceries:.1, Transport:.1};
+const FREQ = {weekly:52/12, biweekly:26/12, monthly:1, yearly:1/12};
+const KEYWORDS = [
+  ["Subscriptions",["netflix","spotify","hulu","disney","youtube","icloud","adobe","claude","chatgpt","prime video","audible"]],
+  ["Groceries",["costco","walmart","trader joe","whole foods","kroger","safeway","aldi","grocer","instacart","h-e-b","publix","patel","indian store"]],
+  ["Dining",["starbucks","coffee","cafe","restaurant","dinner","lunch","breakfast","doordash","uber eats","ubereats","grubhub","pizza","mcdonald","chipotle","kfc","burger","takeout","bar "]],
+  ["Transport",["uber","lyft","gas","fuel","shell","chevron","exxon","parking","toll","car wash","oil change","metro","train","bus"]],
+  ["Travel",["flight","airline","hotel","airbnb","expedia","booking"]],
+  ["Bills & Utilities",["electric","water","internet","phone","wifi","comcast","xfinity","verizon","at&t","t-mobile","utility"]],
+  ["Health",["pharmacy","cvs","walgreens","doctor","dental","gym","fitness","medicine","clinic"]],
+  ["Entertainment",["movie","cinema","concert","ticket","game","steam","playstation","xbox"]],
+  ["Shopping",["amazon","target","best buy","ikea","clothes","shoes","nike","zara","mall"]],
+  ["Family Support",["send home","remit","family","parents"]],
+  ["Education",["course","udemy","coursera","tuition","book"]],
+];
+const $ = id => document.getElementById(id);
+const money = (n, d=2) => (n < 0 ? "−" : "") + "$" + Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function el(tag, props={}, ...kids){const n=Object.assign(document.createElement(tag),props);kids.forEach(k=>k!=null&&n.append(k));return n;}
+function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,2600);}
+
+const today = new Date();
+const state = { db:null, profile:null, loaded:false, expenses:[], month:new Date(today.getFullYear(), today.getMonth(), 1), editing:false };
+const EMPTY = {income:{amount:0,freq:"biweekly",anchor:""}, fixed:[], goal:300};
+
+for (const id of ["f-cat","fa-cat"]) CATS.forEach(c => $(id).append(el("option",{value:c,textContent:c})));
+$("f-cat").value = "Other"; $("fa-cat").value = "Bills & Utilities";
+$("f-date").value = ymd(today);
+
+$("f-note").addEventListener("input", () => {
+  if ($("f-cat").dataset.touched) return;
+  const t = $("f-note").value.toLowerCase();
+  for (const [cat, words] of KEYWORDS) if (words.some(w => t.includes(w))) { $("f-cat").value = cat; return; }
+});
+$("f-cat").addEventListener("change", () => $("f-cat").dataset.touched = "1");
+
+// ---------- math ----------
+const monthly = it => (Number(it.amount)||0) * (FREQ[it.freq] ?? 1);
+function monthKey(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;}
+function paychecksIn(profile, monthStart){
+  const a = profile.income.anchor; if (profile.income.freq !== "biweekly" || !a) return null;
+  const anchor = new Date(a+"T12:00:00"); if (isNaN(anchor)) return null;
+  const y = monthStart.getFullYear(), m = monthStart.getMonth(); let n = 0;
+  const first = new Date(y, m, 1, 12), last = new Date(y, m+1, 0, 12);
+  const k = Math.ceil((first - anchor) / (14*864e5));
+  for (let d = new Date(anchor.getTime() + k*14*864e5); d <= last; d = new Date(d.getTime()+14*864e5)) if (d >= first) n++;
+  return n;
+}
+function compute(){
+  const p = state.profile || EMPTY, key = monthKey(state.month);
+  const income = monthly(p.income);
+  const fixedTotal = p.fixed.reduce((s,f)=>s+monthly(f),0);
+  const exp = state.expenses.filter(e => (e.date||"").startsWith(key));
+  const spent = exp.reduce((s,e)=>s+e.amount,0);
+  const byCat = {};
+  exp.forEach(e => byCat[e.category] = (byCat[e.category]||0) + e.amount);
+  const isCurrent = key === monthKey(today);
+  const dim = new Date(state.month.getFullYear(), state.month.getMonth()+1, 0).getDate();
+  const day = isCurrent ? today.getDate() : dim;
+  const projected = isCurrent && day >= 7 ? spent / day * dim : spent;
+  const left = income - fixedTotal - projected;
+  const goal = Number(p.goal)||0;
+  const budget = income - fixedTotal - goal;                 // everyday spend allowed while hitting goal
+  const daysLeft = isCurrent ? dim - day + 1 : 0;
+  const weekly = isCurrent && daysLeft > 0 ? (budget - spent) / daysLeft * 7 : null;
+  let fixedNeeds = 0, fixedWants = 0;
+  p.fixed.forEach(f => NEEDS.has(f.category) ? fixedNeeds += monthly(f) : fixedWants += monthly(f));
+  const varNeeds = exp.filter(e=>NEEDS.has(e.category)).reduce((s,e)=>s+e.amount,0);
+  return {p, key, income, fixedTotal, exp, spent, byCat, isCurrent, projected, left, goal, budget, weekly, daysLeft,
+          needs: fixedNeeds + varNeeds, wants: fixedWants + (spent - varNeeds), paychecks: paychecksIn(p, state.month)};
+}
+
+// ---------- render ----------
+function render(){
+  const c = compute(), p = c.p;
+  $("month-label").textContent = state.month.toLocaleString("en-US",{month:"long",year:"numeric"});
+  $("next").disabled = c.isCurrent;
+  $("s-income").textContent = money(c.income, 0);
+  $("s-income-sub").textContent = p.income.amount ? `${money(p.income.amount)} ${p.income.freq}` + (c.paychecks ? ` · ${c.paychecks} paydays this month` : "") : "Add your paycheck below";
+  $("s-fixed").textContent = money(c.fixedTotal, 0);
+  $("s-fixed-sub").textContent = c.income ? `${Math.round(c.fixedTotal/c.income*100)}% of take-home` : `${p.fixed.length} bills`;
+  $("s-var").textContent = money(c.spent, 0);
+  $("s-var-sub").textContent = c.isCurrent && c.projected !== c.spent ? `on pace for ${money(c.projected,0)}` : `${c.exp.length} expenses`;
+  $("s-left").textContent = money(c.left, 0);
+  $("s-left").className = "big num " + (c.left >= 0 ? "pos" : "neg");
+  $("s-left-sub").textContent = c.isCurrent ? "projected for the month" : "after everything";
+
+  // category bars
+  const cats = Object.entries(c.byCat).sort((a,b)=>b[1]-a[1]);
+  const max = Math.max(1, ...cats.map(x=>x[1]));
+  $("bars").replaceChildren(...(cats.length ? cats.map(([cat,v]) => {
+    const i = el("i"); i.style.width = v/max*100 + "%"; i.style.background = NEEDS.has(cat) ? "var(--need)" : "var(--want)";
+    return el("div",{className:"bar"}, el("span",{textContent:cat}), el("div",{className:"track"}, i), el("span",{className:"num",style:"text-align:right",textContent:money(v)}));
+  }) : [el("p",{className:"muted",style:"margin:0",textContent:"No everyday expenses logged for this month yet. Add one above; fixed bills are counted automatically."})]));
+
+  // expense list
+  const rows = [...c.exp].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
+  $("expenses").replaceChildren(...(rows.length ? rows.map(e => {
+    const del = el("button",{className:"link",textContent:"Delete","aria-label":"Delete expense"});
+    del.onclick = async () => {
+      if (!del.dataset.armed){ del.dataset.armed="1"; del.textContent="Confirm?"; del.style.color="var(--bad)"; setTimeout(()=>{del.dataset.armed="";del.textContent="Delete";del.style.color="";},3000); return; }
+      try { await state.db.collection("expenses").doc(e.id).delete(); toast("Expense deleted"); } catch { toast("Couldn't delete. Try again."); }
+    };
+    const d = new Date(e.date+"T12:00:00");
+    return el("div",{className:"row"},
+      el("span",{className:"muted num",textContent:d.toLocaleString("en-US",{month:"short",day:"numeric"})}),
+      el("span",{style:"min-width:0;overflow-wrap:anywhere"}, e.note || e.category, " ", el("span",{className:"chip",textContent:e.category})),
+      el("span",{className:"num",textContent:money(e.amount)}), del);
+  }) : [el("p",{className:"muted",style:"margin:0",textContent:"Nothing here yet."})]));
+
+  // goal
+  if (document.activeElement !== $("goal")) $("goal").value = c.goal;
+  const canInvest = Math.max(0, c.left);
+  const scale = Math.max(c.goal * 1.5, canInvest, 1);
+  $("goal-fill").style.width = Math.min(100, canInvest/scale*100) + "%";
+  $("goal-mark").style.left = `calc(${Math.min(100, c.goal/scale*100)}% - 1px)`;
+  $("goal-text").textContent = !c.income ? "Add your paycheck to see what you can invest." :
+    (c.left >= c.goal ? `On track: about ${money(canInvest,0)} left this month, enough to invest ${money(c.goal,0)}.` :
+      `Short by ${money(c.goal - Math.max(c.left,0),0)}. To invest ${money(c.goal,0)}, keep everyday spending under ${money(c.budget,0)} this month.`) +
+    (c.weekly != null ? ` That leaves ${money(Math.max(0,c.weekly),0)} a week for the rest of the month.` : "");
+
+  renderTips(c);
+  renderFixed(p);
+}
+
+function renderTips(c){
+  const tips = [];
+  if (!c.income){ $("tips").replaceChildren(el("li",{textContent:"Add your paycheck and bills to get suggestions."})); return; }
+  const fixedPct = c.fixedTotal / c.income * 100;
+  const rent = c.p.fixed.filter(f=>f.category==="Housing").reduce((s,f)=>s+monthly(f),0);
+  if (rent / c.income > .3) tips.push(`Housing is ${Math.round(rent/c.income*100)}% of take-home (${money(rent,0)}). Common guidance is under 30%. It's your biggest lever at lease renewal: a roommate or a place ${money(rent*.1,0)} cheaper frees that much every month.`);
+  if (fixedPct > 60) tips.push(`Fixed bills already take ${Math.round(fixedPct)}% of your pay, so every everyday dollar counts. Your safe everyday budget is ${money(c.income-c.fixedTotal-c.goal,0)} a month if you invest ${money(c.goal,0)}.`);
+  const ins = c.p.fixed.filter(f=>/insur/i.test(f.name) && /car|auto/i.test(f.name)).reduce((s,f)=>s+monthly(f),0);
+  if (ins > 150) tips.push(`Car insurance is ${money(ins)} a month. Getting 2–3 quotes before renewal, or raising your deductible, often saves $30–80 a month.`);
+  // variable cuts ranked by dollars
+  const cuts = Object.entries(c.byCat).filter(([k])=>CUT[k]).map(([k,v])=>[k, v*(c.isCurrent && c.projected>c.spent ? c.projected/c.spent : 1)*CUT[k], v]).sort((a,b)=>b[1]-a[1]);
+  let freed = 0;
+  for (const [k,save,v] of cuts.slice(0,3)) { if (save < 10) break; freed += save; tips.push(`${k}: ${money(v,0)} so far. Cutting ${Math.round(CUT[k]*100)}% saves about ${money(save,0)} a month.`); }
+  const subs = c.p.fixed.filter(f=>f.category==="Subscriptions").length + (c.byCat.Subscriptions ? 1 : 0);
+  if (subs) tips.push(`Review subscriptions once a quarter and cancel anything you haven't used in 30 days.`);
+  if (c.paychecks === 3) tips.push(`This month has 3 paydays. Investing most of the extra ${money(c.p.income.amount,0)} check is the easiest win of the year.`);
+  else if (c.p.income.freq === "biweekly") tips.push(`Twice a year you get a 3rd paycheck (${money(c.p.income.amount,0)}). Sending those straight to investing covers a year of a $500/month goal in one go.`);
+  if (!c.exp.length) tips.push(`Log everyday expenses for a couple of weeks and this list will point at the specific categories to trim.`);
+  if (c.left >= c.goal && c.exp.length) tips.push(`You're on track. Automate a ${money(c.goal,0)} transfer on payday so the money is invested before it gets spent.`);
+  $("tips").replaceChildren(...tips.map(t => el("li",{textContent:t})));
+}
+
+function renderFixed(p){
+  const rows = [];
+  const inc = p.income;
+  if (state.editing){
+    const amt = el("input",{type:"number",step:"0.01",value:inc.amount,style:"width:100px","aria-label":"Paycheck amount"});
+    const anc = el("input",{type:"date",value:inc.anchor||"","aria-label":"A recent payday"});
+    const save = el("button",{textContent:"Save"});
+    save.onclick = () => saveProfile({...p, income:{...inc, amount:Number(amt.value)||0, anchor:anc.value}});
+    rows.push(el("div",{className:"row"}, el("span",{},"Paycheck (biweekly)", el("br"), el("span",{className:"muted",style:"font-size:13px"},"Last payday: ", anc)), amt, save, el("span")));
+  } else {
+    rows.push(el("div",{className:"row"}, el("strong",{textContent:"Paycheck"}), el("span",{className:"chip",textContent:inc.freq}), el("span",{className:"num pos",textContent:money(inc.amount)}), el("span")));
+  }
+  p.fixed.forEach(f => {
+    if (state.editing){
+      const amt = el("input",{type:"number",step:"0.01",value:f.amount,style:"width:100px","aria-label":f.name+" amount"});
+      amt.onchange = () => saveProfile({...p, fixed:p.fixed.map(x=>x.id===f.id?{...x,amount:Number(amt.value)||0}:x)});
+      const del = el("button",{className:"link",textContent:"Remove"});
+      del.onclick = () => saveProfile({...p, fixed:p.fixed.filter(x=>x.id!==f.id)});
+      rows.push(el("div",{className:"row"}, el("span",{textContent:f.name}), el("span",{className:"chip",textContent:f.freq}), amt, del));
+    } else {
+      rows.push(el("div",{className:"row"}, el("span",{textContent:f.name}), el("span",{className:"chip",textContent:f.freq}),
+        el("span",{className:"num",textContent:money(f.amount)}), el("span",{className:"muted num",style:"font-size:13px",textContent:f.freq!=="monthly"?`${money(monthly(f),0)}/mo`:""})));
+    }
+  });
+  $("fixed").replaceChildren(...rows);
+  $("fixed-add").hidden = !state.editing;
+  $("edit-toggle").textContent = state.editing ? "Done" : "Edit";
+}
+
+// ---------- writes ----------
+let saving = Promise.resolve();
+function saveProfile(next){
+  state.profile = next; render();
+  saving = saving.then(() => state.db.doc("budget/profile").set(next)).catch(() => toast("Couldn't save. Check your connection."));
+}
+$("edit-toggle").onclick = () => { state.editing = !state.editing; render(); };
+$("fixed-add").onsubmit = e => {
+  e.preventDefault();
+  const p = state.profile || EMPTY;
+  saveProfile({...p, fixed:[...p.fixed, {id:"f"+Date.now().toString(36), name:$("fa-name").value.trim(), amount:Number($("fa-amt").value)||0, freq:$("fa-freq").value, category:$("fa-cat").value}]});
+  $("fa-name").value = ""; $("fa-amt").value = "";
+};
+let goalTimer;
+$("goal").oninput = () => { clearTimeout(goalTimer); goalTimer = setTimeout(() => { const g = Math.max(0, Number($("goal").value)||0); if (g !== (state.profile||EMPTY).goal) saveProfile({...(state.profile||EMPTY), goal:g}); }, 600); };
+
+$("add-form").onsubmit = async e => {
+  e.preventDefault();
+  if (!state.db) return;
+  const amount = Math.round(Number($("f-amount").value)*100)/100;
+  if (!(amount > 0)) return;
+  const doc = {date:$("f-date").value, amount, category:$("f-cat").value, note:$("f-note").value.trim(), createdAt:Date.now()};
+  $("f-submit").disabled = true;
+  try {
+    await state.db.collection("expenses").add(doc);
+    $("f-amount").value = ""; $("f-note").value = ""; $("f-cat").value = "Other"; delete $("f-cat").dataset.touched;
+    const [y,m] = doc.date.split("-").map(Number); state.month = new Date(y, m-1, 1);
+    toast(`Added ${money(amount)} · ${doc.category}`); $("f-amount").focus();
+  } catch (err) { toast(err?.code === "quota_exceeded" ? "Storage is full. Delete old expenses to add more." : "Couldn't save. Try again."); }
+  finally { $("f-submit").disabled = false; }
+};
+
+$("prev").onclick = () => { state.month = new Date(state.month.getFullYear(), state.month.getMonth()-1, 1); render(); };
+$("next").onclick = () => { state.month = new Date(state.month.getFullYear(), state.month.getMonth()+1, 1); render(); };
+
+// ---------- Claude analysis ----------
+let ctl = null;
+async function setupAI(){
+  const sample = await claude.use("sample");
+  if (!sample){ $("ai-panel").hidden = true; return; }
+  $("ai-stop").onclick = () => ctl?.abort();
+  $("ai-go").onclick = async () => {
+    const c = compute();
+    const months = {};
+    state.expenses.forEach(e => { const k = e.date.slice(0,7); months[k] = (months[k]||0) + e.amount; });
+    const recent = Object.entries(months).sort().slice(-4).map(([k,v])=>`${k}: ${money(v)}`).join(", ");
+    const top = [...c.exp].sort((a,b)=>b.amount-a.amount).slice(0,15).map(e=>`${e.date} ${money(e.amount)} ${e.category}${e.note?` (${e.note})`:""}`).join("\n");
+    const prompt = `You are a practical personal-finance coach. Review this person's month and help them invest ${money(c.goal,0)}/month (their range is $200-$500). Be specific and use their numbers. No generic filler, no disclaimers beyond one short line if needed.
+
+Take-home pay: ${money(c.p.income.amount)} ${c.p.income.freq} (about ${money(c.income)}/month average${c.paychecks?`; ${c.paychecks} paydays in ${c.key}`:""}).
+Fixed bills (monthly equivalent):
+${c.p.fixed.map(f=>`- ${f.name}: ${money(f.amount)} ${f.freq} = ${money(monthly(f))}/mo [${f.category}]`).join("\n")}
+Total fixed: ${money(c.fixedTotal)}/mo (${Math.round(c.fixedTotal/c.income*100)}% of take-home).
+Month reviewed: ${c.key}${c.isCurrent?` (in progress, ${c.daysLeft} days left; on pace for ${money(c.projected)} everyday spend)`:""}.
+Everyday spending so far: ${money(c.spent)}. By category: ${Object.entries(c.byCat).map(([k,v])=>`${k} ${money(v)}`).join(", ") || "none logged yet"}.
+Largest expenses:
+${top || "(none logged)"}
+Everyday totals by month: ${recent || "n/a"}.
+Projected left over this month: ${money(c.left)}.
+${$("ai-q").value.trim() ? `Their question: ${$("ai-q").value.trim()}\n` : ""}
+Reply in plain text (no markdown symbols like ** or #), under 250 words, with these parts:
+Snapshot: 2 sentences.
+Cuts: 3-5 bullets starting with "- ", each naming a category or bill and a dollar amount per month.
+Investing plan: 2-3 bullets on how much to invest, when (payday automation, 3rd-paycheck months), and where (e.g. emergency fund first if none, then a broad index fund or retirement account).
+${$("ai-q").value.trim() ? "Answer to their question: 1-3 sentences." : ""}`;
+    ctl = new AbortController();
+    $("ai-out").hidden = false; $("ai-out").textContent = "Thinking…";
+    $("ai-go").disabled = true; $("ai-stop").hidden = false;
+    let blocked = false;
+    try {
+      const { truncated } = await sample(prompt, { signal: ctl.signal, onText: ({text}) => { $("ai-out").textContent = text; } });
+      if (truncated) $("ai-out").append("\n\n(Answer was cut short.)");
+    } catch (e) {
+      $("ai-out").textContent = e.text ?? "";
+      const msg = {not_granted:"Claude access wasn't allowed for this page.", sampling_disabled:"Claude isn't available on this account.", rate_limited:"Too many requests right now. Try again in a few minutes.", session_expired:"Sign in to claude.ai again, then retry.", cancelled:""}[e.code] ?? "Something went wrong. Try again.";
+      blocked = ["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(e.code);
+      if (msg) $("ai-out").append((e.text ? "\n\n" : "") + msg);
+      if (!$("ai-out").textContent) $("ai-out").hidden = true;
+    } finally {
+      $("ai-go").disabled = blocked;
+      $("ai-stop").hidden = true;
+    }
+  };
+}
+
+// ---------- boot ----------
+function status(msg){ $("status").hidden = !msg; $("status").textContent = msg || ""; }
+async function boot(){
+  render();
+  const db = await claude.use("db");
+  if (!db){ status("Open this page on claude.ai while signed in to save expenses."); [...document.querySelectorAll("form button, #edit-toggle")].forEach(b=>b.disabled=true); return; }
+  state.db = db;
+  db.doc("budget/profile").onSnapshot(s => {
+    const d = s.data();
+    state.profile = s.exists ? {...EMPTY, ...d, income:{...EMPTY.income, ...(d.income||{})}, fixed:d.fixed||[]} : null;
+    state.loaded = true;
+    status(s.exists ? "" : "Add your paycheck and fixed bills under “Paycheck & fixed bills” to get started.");
+    render();
+  }, () => status("Couldn't load your plan. Reload the page."));
+  db.collection("expenses").orderBy("date","desc").limit(1000).onSnapshot(s => {
+    state.expenses = s.docs.map(d => ({id:d.id, ...d.data(), amount:Number(d.data().amount)||0}));
+    render();
+  }, () => status("Couldn't load expenses. Reload the page."));
+}
+boot();
+setupAI();
+</script>
