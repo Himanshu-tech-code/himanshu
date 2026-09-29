@@ -40,7 +40,11 @@ button:disabled{opacity:.5;cursor:default}
 .strip .big{font-family:var(--display);font-size:24px;font-weight:700}
 .strip .sub{font-size:13px;color:var(--muted)}
 .pos{color:var(--accent)} .neg{color:var(--bad)}
-form.add{display:grid;grid-template-columns:140px 110px 1fr 170px auto;gap:8px}
+form.add{display:grid;grid-template-columns:auto 140px 110px 1fr 170px auto;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:8px 12px;background:var(--surface);color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:600}
+.income-row .num{color:var(--accent)}
 .grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:start}
 .col{display:flex;flex-direction:column;gap:20px;min-width:0}
 .bars{display:flex;flex-direction:column;gap:8px}
@@ -64,7 +68,7 @@ ul.tips li::marker{color:var(--accent)}
 .inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .notice{background:var(--soft);border-radius:10px;padding:12px 14px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px}
-@media (max-width:860px){.grid2{grid-template-columns:1fr}.strip{grid-template-columns:1fr 1fr}form.add{grid-template-columns:1fr 1fr}form.add input[id=f-note]{grid-column:1/-1}}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}.strip{grid-template-columns:1fr 1fr}form.add{grid-template-columns:1fr 1fr}form.add input[id=f-note],form.add .seg{grid-column:1/-1}}
 @media (max-width:420px){.bar{grid-template-columns:96px 1fr 70px}.row{grid-template-columns:52px 1fr auto}.row .chip{display:none}}
 @media (prefers-reduced-motion:no-preference){.track i,.meter i{transition:width .3s}}
 </style>
@@ -92,6 +96,7 @@ ul.tips li::marker{color:var(--accent)}
   </section>
 
   <form class="add panel" id="add-form" autocomplete="off">
+    <div class="seg" role="group" aria-label="Entry type"><button type="button" id="t-exp" aria-pressed="true">Expense</button><button type="button" id="t-inc" aria-pressed="false">Extra income</button></div>
     <input type="date" id="f-date" required aria-label="Date">
     <input type="number" id="f-amount" step="0.01" min="0.01" placeholder="Amount $" required aria-label="Amount">
     <input id="f-note" placeholder="What was it? e.g. Costco, Uber, dinner" maxlength="80" aria-label="Description">
@@ -109,7 +114,7 @@ ul.tips li::marker{color:var(--accent)}
         <div class="bars" id="bars"></div>
       </section>
       <section class="panel">
-        <h2>Expenses this month</h2>
+        <h2>This month's entries</h2>
         <div class="list" id="expenses"></div>
       </section>
     </div>
@@ -190,11 +195,23 @@ $("f-cat").value = "Other"; $("fa-cat").value = "Bills & Utilities";
 $("f-date").value = ymd(today);
 
 $("f-note").addEventListener("input", () => {
-  if ($("f-cat").dataset.touched) return;
+  if ($("f-cat").dataset.touched || entryType==="income") return;
   const t = $("f-note").value.toLowerCase();
   for (const [cat, words] of KEYWORDS) if (words.some(w => t.includes(w))) { $("f-cat").value = cat; return; }
 });
 $("f-cat").addEventListener("change", () => $("f-cat").dataset.touched = "1");
+const INCOME_SOURCES = ["Sold item","Side gig","Refund","Gift","Bonus","Other income"];
+let entryType = "expense";
+function setType(t){
+  entryType = t;
+  $("t-exp").setAttribute("aria-pressed", t==="expense"); $("t-inc").setAttribute("aria-pressed", t==="income");
+  $("f-cat").replaceChildren(...(t==="income" ? INCOME_SOURCES : CATS).map(c => el("option",{value:c,textContent:c})));
+  $("f-cat").value = t==="income" ? "Sold item" : "Other"; delete $("f-cat").dataset.touched;
+  $("f-note").placeholder = t==="income" ? "What was it? e.g. sold old phone on Marketplace" : "What was it? e.g. Costco, Uber, dinner";
+  $("f-submit").textContent = t==="income" ? "Add income" : "Add expense";
+}
+$("t-exp").onclick = () => setType("expense");
+$("t-inc").onclick = () => setType("income");
 
 // ---------- math ----------
 const monthly = it => (Number(it.amount)||0) * (FREQ[it.freq] ?? 1);
@@ -210,10 +227,14 @@ function paychecksIn(profile, monthStart){
 }
 function compute(){
   const p = state.profile || EMPTY, key = monthKey(state.month);
-  const income = monthly(p.income);
+  const salary = monthly(p.income);
   const fixedTotal = p.fixed.reduce((s,f)=>s+monthly(f),0);
-  const exp = state.expenses.filter(e => (e.date||"").startsWith(key));
+  const inMonth = state.expenses.filter(e => (e.date||"").startsWith(key));
+  const exp = inMonth.filter(e => e.type !== "income");
+  const extras = inMonth.filter(e => e.type === "income");
+  const extra = extras.reduce((s,e)=>s+e.amount,0);
   const spent = exp.reduce((s,e)=>s+e.amount,0);
+  const income = salary + extra;
   const byCat = {};
   exp.forEach(e => byCat[e.category] = (byCat[e.category]||0) + e.amount);
   const isCurrent = key === monthKey(today);
@@ -228,7 +249,7 @@ function compute(){
   let fixedNeeds = 0, fixedWants = 0;
   p.fixed.forEach(f => NEEDS.has(f.category) ? fixedNeeds += monthly(f) : fixedWants += monthly(f));
   const varNeeds = exp.filter(e=>NEEDS.has(e.category)).reduce((s,e)=>s+e.amount,0);
-  return {p, key, income, fixedTotal, exp, spent, byCat, isCurrent, projected, left, goal, budget, weekly, daysLeft,
+  return {p, key, income, salary, extra, extras, inMonth, fixedTotal, exp, spent, byCat, isCurrent, projected, left, goal, budget, weekly, daysLeft,
           needs: fixedNeeds + varNeeds, wants: fixedWants + (spent - varNeeds), paychecks: paychecksIn(p, state.month)};
 }
 
@@ -238,9 +259,9 @@ function render(){
   $("month-label").textContent = state.month.toLocaleString("en-US",{month:"long",year:"numeric"});
   $("next").disabled = c.isCurrent;
   $("s-income").textContent = money(c.income, 0);
-  $("s-income-sub").textContent = p.income.amount ? `${money(p.income.amount)} ${p.income.freq}` + (c.paychecks ? ` · ${c.paychecks} paydays this month` : "") : "Add your paycheck below";
+  $("s-income-sub").textContent = p.income.amount ? (c.extra ? `pay ${money(c.salary,0)} + ${money(c.extra,0)} extra` : `${money(p.income.amount)} ${p.income.freq}`) + (c.paychecks ? ` · ${c.paychecks} paydays` : "") : "Add your paycheck below";
   $("s-fixed").textContent = money(c.fixedTotal, 0);
-  $("s-fixed-sub").textContent = c.income ? `${Math.round(c.fixedTotal/c.income*100)}% of take-home` : `${p.fixed.length} bills`;
+  $("s-fixed-sub").textContent = c.income ? `${Math.round(c.fixedTotal/c.salary*100)}% of take-home` : `${p.fixed.length} bills`;
   $("s-var").textContent = money(c.spent, 0);
   $("s-var-sub").textContent = c.isCurrent && c.projected !== c.spent ? `on pace for ${money(c.projected,0)}` : `${c.exp.length} expenses`;
   $("s-left").textContent = money(c.left, 0);
@@ -256,18 +277,19 @@ function render(){
   }) : [el("p",{className:"muted",style:"margin:0",textContent:"No everyday expenses logged for this month yet. Add one above; fixed bills are counted automatically."})]));
 
   // expense list
-  const rows = [...c.exp].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
+  const rows = [...c.inMonth].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
   $("expenses").replaceChildren(...(rows.length ? rows.map(e => {
     const del = el("button",{className:"link",textContent:"Delete","aria-label":"Delete expense"});
     del.onclick = async () => {
       if (!del.dataset.armed){ del.dataset.armed="1"; del.textContent="Confirm?"; del.style.color="var(--bad)"; setTimeout(()=>{del.dataset.armed="";del.textContent="Delete";del.style.color="";},3000); return; }
-      try { await state.db.collection("expenses").doc(e.id).delete(); toast("Expense deleted"); } catch { toast("Couldn't delete. Try again."); }
+      try { await state.db.collection("expenses").doc(e.id).delete(); toast("Entry deleted"); } catch { toast("Couldn't delete. Try again."); }
     };
     const d = new Date(e.date+"T12:00:00");
-    return el("div",{className:"row"},
+    const inc = e.type === "income";
+    return el("div",{className:"row" + (inc ? " income-row" : "")},
       el("span",{className:"muted num",textContent:d.toLocaleString("en-US",{month:"short",day:"numeric"})}),
       el("span",{style:"min-width:0;overflow-wrap:anywhere"}, e.note || e.category, " ", el("span",{className:"chip",textContent:e.category})),
-      el("span",{className:"num",textContent:money(e.amount)}), del);
+      el("span",{className:"num",textContent:(inc ? "+" : "") + money(e.amount)}), del);
   }) : [el("p",{className:"muted",style:"margin:0",textContent:"Nothing here yet."})]));
 
   // goal
@@ -288,9 +310,9 @@ function render(){
 function renderTips(c){
   const tips = [];
   if (!c.income){ $("tips").replaceChildren(el("li",{textContent:"Add your paycheck and bills to get suggestions."})); return; }
-  const fixedPct = c.fixedTotal / c.income * 100;
+  const fixedPct = c.fixedTotal / c.salary * 100;
   const rent = c.p.fixed.filter(f=>f.category==="Housing").reduce((s,f)=>s+monthly(f),0);
-  if (rent / c.income > .3) tips.push(`Housing is ${Math.round(rent/c.income*100)}% of take-home (${money(rent,0)}). Common guidance is under 30%. It's your biggest lever at lease renewal: a roommate or a place ${money(rent*.1,0)} cheaper frees that much every month.`);
+  if (rent / c.salary > .3) tips.push(`Housing is ${Math.round(rent/c.salary*100)}% of take-home (${money(rent,0)}). Common guidance is under 30%. It's your biggest lever at lease renewal: a roommate or a place ${money(rent*.1,0)} cheaper frees that much every month.`);
   if (fixedPct > 60) tips.push(`Fixed bills already take ${Math.round(fixedPct)}% of your pay, so every everyday dollar counts. Your safe everyday budget is ${money(c.income-c.fixedTotal-c.goal,0)} a month if you invest ${money(c.goal,0)}.`);
   const ins = c.p.fixed.filter(f=>/insur/i.test(f.name) && /car|auto/i.test(f.name)).reduce((s,f)=>s+monthly(f),0);
   if (ins > 150) tips.push(`Car insurance is ${money(ins)} a month. Getting 2–3 quotes before renewal, or raising your deductible, often saves $30–80 a month.`);
@@ -302,6 +324,7 @@ function renderTips(c){
   if (subs) tips.push(`Review subscriptions once a quarter and cancel anything you haven't used in 30 days.`);
   if (c.paychecks === 3) tips.push(`This month has 3 paydays. Investing most of the extra ${money(c.p.income.amount,0)} check is the easiest win of the year.`);
   else if (c.p.income.freq === "biweekly") tips.push(`Twice a year you get a 3rd paycheck (${money(c.p.income.amount,0)}). Sending those straight to investing covers a year of a $500/month goal in one go.`);
+  if (c.extra) tips.push(`You brought in ${money(c.extra,0)} extra this month. Put it straight toward investing or your emergency fund before it blends into everyday spending.`);
   if (!c.exp.length) tips.push(`Log everyday expenses for a couple of weeks and this list will point at the specific categories to trim.`);
   if (c.left >= c.goal && c.exp.length) tips.push(`You're on track. Automate a ${money(c.goal,0)} transfer on payday so the money is invested before it gets spent.`);
   $("tips").replaceChildren(...tips.map(t => el("li",{textContent:t})));
@@ -357,13 +380,13 @@ $("add-form").onsubmit = async e => {
   if (!state.db) return;
   const amount = Math.round(Number($("f-amount").value)*100)/100;
   if (!(amount > 0)) return;
-  const doc = {date:$("f-date").value, amount, category:$("f-cat").value, note:$("f-note").value.trim(), createdAt:Date.now()};
+  const doc = {type:entryType, date:$("f-date").value, amount, category:$("f-cat").value, note:$("f-note").value.trim(), createdAt:Date.now()};
   $("f-submit").disabled = true;
   try {
     await state.db.collection("expenses").add(doc);
-    $("f-amount").value = ""; $("f-note").value = ""; $("f-cat").value = "Other"; delete $("f-cat").dataset.touched;
+    $("f-amount").value = ""; $("f-note").value = ""; setType("expense");
     const [y,m] = doc.date.split("-").map(Number); state.month = new Date(y, m-1, 1);
-    toast(`Added ${money(amount)} · ${doc.category}`); $("f-amount").focus();
+    toast(`Added ${doc.type==="income" ? "+" : ""}${money(amount)} · ${doc.category}`); $("f-amount").focus();
   } catch (err) { toast(err?.code === "quota_exceeded" ? "Storage is full. Delete old expenses to add more." : "Couldn't save. Try again."); }
   finally { $("f-submit").disabled = false; }
 };
@@ -380,15 +403,16 @@ async function setupAI(){
   $("ai-go").onclick = async () => {
     const c = compute();
     const months = {};
-    state.expenses.forEach(e => { const k = e.date.slice(0,7); months[k] = (months[k]||0) + e.amount; });
+    state.expenses.filter(e => e.type !== "income").forEach(e => { const k = e.date.slice(0,7); months[k] = (months[k]||0) + e.amount; });
     const recent = Object.entries(months).sort().slice(-4).map(([k,v])=>`${k}: ${money(v)}`).join(", ");
     const top = [...c.exp].sort((a,b)=>b.amount-a.amount).slice(0,15).map(e=>`${e.date} ${money(e.amount)} ${e.category}${e.note?` (${e.note})`:""}`).join("\n");
     const prompt = `You are a practical personal-finance coach. Review this person's month and help them invest ${money(c.goal,0)}/month (their range is $200-$500). Be specific and use their numbers. No generic filler, no disclaimers beyond one short line if needed.
 
-Take-home pay: ${money(c.p.income.amount)} ${c.p.income.freq} (about ${money(c.income)}/month average${c.paychecks?`; ${c.paychecks} paydays in ${c.key}`:""}).
+Take-home pay: ${money(c.p.income.amount)} ${c.p.income.freq} (about ${money(c.salary)}/month average${c.paychecks?`; ${c.paychecks} paydays in ${c.key}`:""}).
+Extra income this month: ${c.extras.length ? c.extras.map(e=>`${money(e.amount)} ${e.category}${e.note?` (${e.note})`:""}`).join(", ") : "none"}.
 Fixed bills (monthly equivalent):
 ${c.p.fixed.map(f=>`- ${f.name}: ${money(f.amount)} ${f.freq} = ${money(monthly(f))}/mo [${f.category}]`).join("\n")}
-Total fixed: ${money(c.fixedTotal)}/mo (${Math.round(c.fixedTotal/c.income*100)}% of take-home).
+Total fixed: ${money(c.fixedTotal)}/mo (${Math.round(c.fixedTotal/c.salary*100)}% of regular take-home).
 Month reviewed: ${c.key}${c.isCurrent?` (in progress, ${c.daysLeft} days left; on pace for ${money(c.projected)} everyday spend)`:""}.
 Everyday spending so far: ${money(c.spent)}. By category: ${Object.entries(c.byCat).map(([k,v])=>`${k} ${money(v)}`).join(", ") || "none logged yet"}.
 Largest expenses:
