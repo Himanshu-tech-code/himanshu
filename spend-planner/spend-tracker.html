@@ -245,7 +245,7 @@ const sum = xs => xs.reduce((t, x) => t + x.amount, 0);
 const todayStr = ymd(today);
 
 // Every scheduled paycheck and bill between two dates (inclusive). Biweekly/weekly items repeat
-// from their `start` date; monthly items (and anything without a start date) post on the last day.
+// from their `start` date; monthly items post on their `day` of the month, or the last day if none is set.
 function occurrences(p, from, to){
   const items = [{id:"pay", name:"Paycheck", kind:"income", category:"Paycheck", amount:p.income.amount, freq:p.income.freq, start:p.income.anchor},
                  ...p.fixed.map(f => ({...f, kind:"bill"}))];
@@ -260,7 +260,8 @@ function occurrences(p, from, to){
     } else {
       const amount = it.freq === "monthly" ? amt : monthly(it);
       const f = parse(from), t = parse(to);
-      for (let y = f.getFullYear(), m = f.getMonth(); y < t.getFullYear() || (y === t.getFullYear() && m <= t.getMonth()); m === 11 ? (y++, m = 0) : m++) push(lastDay(y, m), amount);
+      for (let y = f.getFullYear(), m = f.getMonth(); y < t.getFullYear() || (y === t.getFullYear() && m <= t.getMonth()); m === 11 ? (y++, m = 0) : m++)
+        push(it.freq === "monthly" && it.day ? new Date(y, m, Math.min(it.day, lastDay(y, m).getDate()), 12) : lastDay(y, m), amount);
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));
@@ -465,8 +466,14 @@ function renderFixed(p){
       amt.onchange = () => saveProfile({...p, fixed:p.fixed.map(x=>x.id===f.id?{...x,amount:Number(amt.value)||0}:x)});
       const del = el("button",{className:"link",textContent:"Remove"});
       del.onclick = () => saveProfile({...p, fixed:p.fixed.filter(x=>x.id!==f.id)});
-      const when = f.freq === "biweekly" || f.freq === "weekly" ? el("input",{type:"date",value:f.start||"","aria-label":f.name+" charge date",title:"Any date this bill comes out"}) : null;
-      if (when) when.onchange = () => saveProfile({...p, fixed:p.fixed.map(x=>x.id===f.id?{...x,start:when.value}:x)});
+      let when = null;
+      if (f.freq === "biweekly" || f.freq === "weekly"){
+        when = el("input",{type:"date",value:f.start||"","aria-label":f.name+" charge date",title:"Any date this bill comes out"});
+        when.onchange = () => saveProfile({...p, fixed:p.fixed.map(x=>x.id===f.id?{...x,start:when.value}:x)});
+      } else if (f.freq === "monthly"){
+        when = el("input",{type:"number",min:1,max:31,value:f.day||"",placeholder:"last day",style:"width:96px","aria-label":f.name+" day of month",title:"Day of the month it comes out (blank = last day)"});
+        when.onchange = () => { const d = Math.min(31, Math.max(0, Math.round(Number(when.value)||0))); saveProfile({...p, fixed:p.fixed.map(x=>{ if (x.id!==f.id) return x; const {day, ...rest} = x; return d ? {...rest, day:d} : rest; })}); };
+      }
       rows.push(el("div",{className:"row"}, el("span",{}, f.name, when ? el("br") : null, when), el("span",{className:"chip",textContent:f.freq}), amt, del));
     } else {
       rows.push(el("div",{className:"row"}, el("span",{textContent:f.name}), el("span",{className:"chip",textContent:f.freq}),
