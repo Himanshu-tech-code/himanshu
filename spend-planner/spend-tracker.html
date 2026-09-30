@@ -67,6 +67,12 @@ ul.tips li::marker{color:var(--accent)}
 .ai{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.6}
 .inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .notice{background:var(--soft);border-radius:10px;padding:12px 14px}
+.bal{font-family:var(--display);font-size:34px;font-weight:700;line-height:1.1}
+.balrow{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:6px 0;border-top:1px solid var(--line)}
+.row.future{opacity:.6}
+.row .auto{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 6px;margin-left:4px;white-space:nowrap}
+#acct-form{display:flex;flex-direction:column;gap:10px}
+#acct-form label.chk{display:flex;gap:8px;align-items:center;font-size:14px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px}
 @media (max-width:860px){.grid2{grid-template-columns:1fr}.strip{grid-template-columns:1fr 1fr}form.add{grid-template-columns:1fr 1fr}form.add input[id=f-note],form.add .seg{grid-column:1/-1}}
 @media (max-width:420px){.bar{grid-template-columns:96px 1fr 70px}.row{grid-template-columns:52px 1fr auto}.row .chip{display:none}}
@@ -120,6 +126,22 @@ ul.tips li::marker{color:var(--accent)}
     </div>
 
     <div class="col">
+      <section class="panel" id="acct">
+        <div class="inline" style="justify-content:space-between">
+          <h2>Account balance</h2>
+          <button class="link" id="acct-edit">Update balance</button>
+        </div>
+        <div><div class="bal num" id="bal-now">–</div><div class="muted" style="font-size:13px" id="bal-sub"></div></div>
+        <div id="bal-rows"></div>
+        <div class="label" id="up-label">Coming up</div>
+        <div class="list" id="upcoming"></div>
+        <form id="acct-form" hidden>
+          <label class="inline" style="font-size:14px">Balance in your account right now $<input type="number" id="acct-amt" step="0.01" required style="width:130px"></label>
+          <div id="acct-today"></div>
+          <div class="inline"><button class="primary">Save balance</button><button type="button" id="acct-cancel">Cancel</button></div>
+        </form>
+      </section>
+
       <section class="panel">
         <div class="inline" style="justify-content:space-between">
           <h2>Investing goal</h2>
@@ -216,29 +238,62 @@ $("t-inc").onclick = () => setType("income");
 // ---------- math ----------
 const monthly = it => (Number(it.amount)||0) * (FREQ[it.freq] ?? 1);
 function monthKey(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;}
-function paychecksIn(profile, monthStart){
-  const a = profile.income.anchor; if (profile.income.freq !== "biweekly" || !a) return null;
-  const anchor = new Date(a+"T12:00:00"); if (isNaN(anchor)) return null;
-  const y = monthStart.getFullYear(), m = monthStart.getMonth(); let n = 0;
-  const first = new Date(y, m, 1, 12), last = new Date(y, m+1, 0, 12);
-  const k = Math.ceil((first - anchor) / (14*864e5));
-  for (let d = new Date(anchor.getTime() + k*14*864e5); d <= last; d = new Date(d.getTime()+14*864e5)) if (d >= first) n++;
-  return n;
+const parse = str => new Date(str + "T12:00:00");
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const lastDay = (y, m) => new Date(y, m + 1, 0, 12);
+const sum = xs => xs.reduce((t, x) => t + x.amount, 0);
+const todayStr = ymd(today);
+
+// Every scheduled paycheck and bill between two dates (inclusive). Biweekly/weekly items repeat
+// from their `start` date; monthly items (and anything without a start date) post on the last day.
+function occurrences(p, from, to){
+  const items = [{id:"pay", name:"Paycheck", kind:"income", category:"Paycheck", amount:p.income.amount, freq:p.income.freq, start:p.income.anchor},
+                 ...p.fixed.map(f => ({...f, kind:"bill"}))];
+  const out = [];
+  for (const it of items){
+    const amt = Number(it.amount) || 0; if (!amt) continue;
+    const push = (d, amount) => { const date = ymd(d); if (date >= from && date <= to) out.push({key:`${it.id}@${date}`, id:it.id, name:it.name, kind:it.kind, category:it.category, amount, date, auto:true}); };
+    const step = {weekly:7, biweekly:14}[it.freq];
+    if (step && it.start){
+      const s0 = parse(it.start), k = Math.ceil(Math.round((parse(from) - s0) / 864e5) / step);
+      for (let d = addDays(s0, k * step); ymd(d) <= to; d = addDays(d, step)) push(d, amt);
+    } else {
+      const amount = it.freq === "monthly" ? amt : monthly(it);
+      const f = parse(from), t = parse(to);
+      for (let y = f.getFullYear(), m = f.getMonth(); y < t.getFullYear() || (y === t.getFullYear() && m <= t.getMonth()); m === 11 ? (y++, m = 0) : m++) push(lastDay(y, m), amount);
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+// Logged entries after the balance was set move the balance; earlier ones were already in it.
+const afterSnapshot = (a, e) => e.date > a.asOf || (e.date === a.asOf && (e.createdAt || 0) > (a.asOfTs || 0));
+function balanceAt(p, to){
+  const a = p.account; if (!a || a.balance == null || !a.asOf || to < a.asOf) return null;
+  const skip = new Set(a.skip || []);
+  let b = Number(a.balance);
+  for (const o of occurrences(p, a.asOf, to)) if (!skip.has(o.key)) b += o.kind === "income" ? o.amount : -o.amount;
+  for (const e of state.expenses) if (e.date <= to && afterSnapshot(a, e)) b += e.type === "income" ? e.amount : -e.amount;
+  return b;
 }
 function compute(){
   const p = state.profile || EMPTY, key = monthKey(state.month);
-  const salary = monthly(p.income);
-  const fixedTotal = p.fixed.reduce((s,f)=>s+monthly(f),0);
+  const y = state.month.getFullYear(), mo = state.month.getMonth();
+  const first = ymd(new Date(y, mo, 1, 12)), last = ymd(lastDay(y, mo));
+  const occ = occurrences(p, first, last);
+  const pay = occ.filter(o => o.kind === "income"), bills = occ.filter(o => o.kind === "bill");
+  const salary = monthly(p.income);                                   // average month, for ratios
+  const fixedAvg = p.fixed.reduce((s,f)=>s+monthly(f),0);
+  const fixedTotal = sum(bills);                                       // what actually comes out this month
   const inMonth = state.expenses.filter(e => (e.date||"").startsWith(key));
   const exp = inMonth.filter(e => e.type !== "income");
   const extras = inMonth.filter(e => e.type === "income");
-  const extra = extras.reduce((s,e)=>s+e.amount,0);
-  const spent = exp.reduce((s,e)=>s+e.amount,0);
-  const income = salary + extra;
+  const extra = sum(extras);
+  const spent = sum(exp);
+  const income = sum(pay) + extra;
   const byCat = {};
   exp.forEach(e => byCat[e.category] = (byCat[e.category]||0) + e.amount);
-  const isCurrent = key === monthKey(today);
-  const dim = new Date(state.month.getFullYear(), state.month.getMonth()+1, 0).getDate();
+  const isCurrent = key === monthKey(today), isFuture = first > todayStr;
+  const dim = new Date(y, mo+1, 0).getDate();
   const day = isCurrent ? today.getDate() : dim;
   const projected = isCurrent && day >= 7 ? spent / day * dim : spent;
   const left = income - fixedTotal - projected;
@@ -246,27 +301,76 @@ function compute(){
   const budget = income - fixedTotal - goal;                 // everyday spend allowed while hitting goal
   const daysLeft = isCurrent ? dim - day + 1 : 0;
   const weekly = isCurrent && daysLeft > 0 ? (budget - spent) / daysLeft * 7 : null;
-  let fixedNeeds = 0, fixedWants = 0;
-  p.fixed.forEach(f => NEEDS.has(f.category) ? fixedNeeds += monthly(f) : fixedWants += monthly(f));
-  const varNeeds = exp.filter(e=>NEEDS.has(e.category)).reduce((s,e)=>s+e.amount,0);
-  return {p, key, income, salary, extra, extras, inMonth, fixedTotal, exp, spent, byCat, isCurrent, projected, left, goal, budget, weekly, daysLeft,
-          needs: fixedNeeds + varNeeds, wants: fixedWants + (spent - varNeeds), paychecks: paychecksIn(p, state.month)};
+  const a = p.account;
+  const opening = balanceAt(p, ymd(addDays(parse(first), -1))) ?? (a && a.asOf >= first && a.asOf <= last ? Number(a.balance) : null);
+  const closing = balanceAt(p, last);
+  const paychecks = p.income.freq === "biweekly" && p.income.anchor ? pay.length : null;
+  return {p, key, first, last, occ, pay, bills, income, salary, fixedAvg, extra, extras, inMonth, fixedTotal, exp, spent, byCat,
+          isCurrent, isFuture, projected, left, goal, budget, weekly, daysLeft, opening, closing, paychecks,
+          now: balanceAt(p, todayStr)};
 }
 
 // ---------- render ----------
+function scheduledRow(o, withTag = true){
+  const inc = o.kind === "income", future = o.date > todayStr;
+  return el("div",{className:"row" + (inc ? " income-row" : "") + (future ? " future" : "")},
+    el("span",{className:"muted num",textContent:parse(o.date).toLocaleString("en-US",{month:"short",day:"numeric"})}),
+    el("span",{style:"min-width:0;overflow-wrap:anywhere"}, o.name, withTag ? el("span",{className:"auto",textContent:future ? "scheduled" : "auto"}) : null),
+    el("span",{className:"num",textContent:(inc ? "+" : "−") + money(o.amount)}), el("span"));
+}
+function renderAccount(c){
+  const a = c.p.account;
+  $("acct-edit").textContent = a ? "Update balance" : "Add balance";
+  if (!a){
+    $("bal-now").textContent = "–";
+    $("bal-sub").textContent = "Enter what's in your account today. Paychecks, bills and expenses will move it automatically.";
+    $("bal-rows").replaceChildren(); $("upcoming").replaceChildren(); $("up-label").hidden = true; return;
+  }
+  $("bal-now").textContent = money(c.now ?? Number(a.balance));
+  $("bal-now").className = "bal num" + ((c.now ?? 0) < 0 ? " neg" : "");
+  $("bal-sub").textContent = `Today · started from ${money(Number(a.balance))} on ${parse(a.asOf).toLocaleString("en-US",{month:"short",day:"numeric"})}`;
+  const mName = state.month.toLocaleString("en-US",{month:"short"});
+  const rows = [];
+  if (c.opening != null) rows.push(el("div",{className:"balrow"}, el("span",{textContent: a.asOf > c.first ? `Starting balance (${parse(a.asOf).toLocaleString("en-US",{month:"short",day:"numeric"})})` : `Carried into ${mName} 1`}), el("span",{className:"num",textContent:money(c.opening)})));
+  if (c.closing != null) rows.push(el("div",{className:"balrow"}, el("span",{textContent: c.isCurrent || c.isFuture ? `Expected at end of ${mName}` : `End of ${mName}`}), el("strong",{className:"num " + (c.closing < 0 ? "neg" : ""),textContent:money(c.closing)})));
+  if (c.closing == null) rows.push(el("div",{className:"balrow muted",textContent:"Your balance tracking starts after this month."}));
+  $("bal-rows").replaceChildren(...rows);
+  const soon = occurrences(c.p, ymd(addDays(today,1)), ymd(addDays(today,21))).slice(0,6);
+  $("up-label").hidden = !soon.length;
+  $("upcoming").replaceChildren(...soon.map(o => scheduledRow(o, false)));
+}
+function openAcctForm(){
+  const c = compute(), a = c.p.account;
+  $("acct-amt").value = (c.now ?? "") === "" ? "" : c.now.toFixed(2);
+  const todays = occurrences(c.p, todayStr, todayStr);
+  $("acct-today").replaceChildren(...(todays.length ? [el("div",{className:"muted",style:"font-size:13px",textContent:"Scheduled for today. Tick the ones already in that balance:"}),
+    ...todays.map(o => { const cb = el("input",{type:"checkbox",checked:true,value:o.key}); return el("label",{className:"chk"}, cb, `${o.name} ${o.kind==="income"?"+":"−"}${money(o.amount)}`); })] : []));
+  $("acct-form").hidden = false; $("acct-amt").focus();
+}
+$("acct-edit").onclick = openAcctForm;
+$("acct-cancel").onclick = () => $("acct-form").hidden = true;
+$("acct-form").onsubmit = e => {
+  e.preventDefault();
+  const v = Math.round(Number($("acct-amt").value) * 100) / 100;
+  if (!isFinite(v)) return;
+  const skip = [...$("acct-today").querySelectorAll("input:checked")].map(i => i.value);
+  saveProfile({...(state.profile || EMPTY), account:{balance:v, asOf:todayStr, asOfTs:Date.now(), skip}});
+  $("acct-form").hidden = true; toast("Balance updated");
+};
+
 function render(){
   const c = compute(), p = c.p;
   $("month-label").textContent = state.month.toLocaleString("en-US",{month:"long",year:"numeric"});
-  $("next").disabled = c.isCurrent;
+  $("next").disabled = state.month >= new Date(today.getFullYear(), today.getMonth() + 3, 1);
   $("s-income").textContent = money(c.income, 0);
-  $("s-income-sub").textContent = p.income.amount ? (c.extra ? `pay ${money(c.salary,0)} + ${money(c.extra,0)} extra` : `${money(p.income.amount)} ${p.income.freq}`) + (c.paychecks ? ` · ${c.paychecks} paydays` : "") : "Add your paycheck below";
+  $("s-income-sub").textContent = p.income.amount ? (c.paychecks ? `${c.paychecks} paychecks` : `${money(p.income.amount)} ${p.income.freq}`) + (c.extra ? ` + ${money(c.extra,0)} extra` : "") : "Add your paycheck below";
   $("s-fixed").textContent = money(c.fixedTotal, 0);
-  $("s-fixed-sub").textContent = c.income ? `${Math.round(c.fixedTotal/c.salary*100)}% of take-home` : `${p.fixed.length} bills`;
+  $("s-fixed-sub").textContent = `${c.bills.length} payments this month`;
   $("s-var").textContent = money(c.spent, 0);
   $("s-var-sub").textContent = c.isCurrent && c.projected !== c.spent ? `on pace for ${money(c.projected,0)}` : `${c.exp.length} expenses`;
   $("s-left").textContent = money(c.left, 0);
   $("s-left").className = "big num " + (c.left >= 0 ? "pos" : "neg");
-  $("s-left-sub").textContent = c.isCurrent ? "projected for the month" : "after everything";
+  $("s-left-sub").textContent = c.isCurrent ? "projected for the month" : c.isFuture ? "planned, before everyday spending" : "after everything";
 
   // category bars
   const cats = Object.entries(c.byCat).sort((a,b)=>b[1]-a[1]);
@@ -277,8 +381,9 @@ function render(){
   }) : [el("p",{className:"muted",style:"margin:0",textContent:"No everyday expenses logged for this month yet. Add one above; fixed bills are counted automatically."})]));
 
   // expense list
-  const rows = [...c.inMonth].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
+  const rows = [...c.inMonth, ...c.occ].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
   $("expenses").replaceChildren(...(rows.length ? rows.map(e => {
+    if (e.auto) return scheduledRow(e);
     const del = el("button",{className:"link",textContent:"Delete","aria-label":"Delete expense"});
     del.onclick = async () => {
       if (!del.dataset.armed){ del.dataset.armed="1"; del.textContent="Confirm?"; del.style.color="var(--bad)"; setTimeout(()=>{del.dataset.armed="";del.textContent="Delete";del.style.color="";},3000); return; }
@@ -298,22 +403,23 @@ function render(){
   const scale = Math.max(c.goal * 1.5, canInvest, 1);
   $("goal-fill").style.width = Math.min(100, canInvest/scale*100) + "%";
   $("goal-mark").style.left = `calc(${Math.min(100, c.goal/scale*100)}% - 1px)`;
-  $("goal-text").textContent = !c.income ? "Add your paycheck to see what you can invest." :
+  $("goal-text").textContent = !c.salary ? "Add your paycheck to see what you can invest." :
     (c.left >= c.goal ? `On track: about ${money(canInvest,0)} left this month, enough to invest ${money(c.goal,0)}.` :
       `Short by ${money(c.goal - Math.max(c.left,0),0)}. To invest ${money(c.goal,0)}, keep everyday spending under ${money(c.budget,0)} this month.`) +
     (c.weekly != null ? ` That leaves ${money(Math.max(0,c.weekly),0)} a week for the rest of the month.` : "");
 
+  renderAccount(c);
   renderTips(c);
   renderFixed(p);
 }
 
 function renderTips(c){
   const tips = [];
-  if (!c.income){ $("tips").replaceChildren(el("li",{textContent:"Add your paycheck and bills to get suggestions."})); return; }
-  const fixedPct = c.fixedTotal / c.salary * 100;
+  if (!c.salary){ $("tips").replaceChildren(el("li",{textContent:"Add your paycheck and bills to get suggestions."})); return; }
+  const fixedPct = c.fixedAvg / c.salary * 100;
   const rent = c.p.fixed.filter(f=>f.category==="Housing").reduce((s,f)=>s+monthly(f),0);
   if (rent / c.salary > .3) tips.push(`Housing is ${Math.round(rent/c.salary*100)}% of take-home (${money(rent,0)}). Common guidance is under 30%. It's your biggest lever at lease renewal: a roommate or a place ${money(rent*.1,0)} cheaper frees that much every month.`);
-  if (fixedPct > 60) tips.push(`Fixed bills already take ${Math.round(fixedPct)}% of your pay, so every everyday dollar counts. Your safe everyday budget is ${money(c.income-c.fixedTotal-c.goal,0)} a month if you invest ${money(c.goal,0)}.`);
+  if (fixedPct > 60) tips.push(`Fixed bills already take ${Math.round(fixedPct)}% of your pay, so every everyday dollar counts. Your safe everyday budget is about ${money(c.salary-c.fixedAvg-c.goal,0)} in a typical month if you invest ${money(c.goal,0)}.`);
   const ins = c.p.fixed.filter(f=>/insur/i.test(f.name) && /car|auto/i.test(f.name)).reduce((s,f)=>s+monthly(f),0);
   if (ins > 150) tips.push(`Car insurance is ${money(ins)} a month. Getting 2–3 quotes before renewal, or raising your deductible, often saves $30–80 a month.`);
   // variable cuts ranked by dollars
@@ -330,17 +436,22 @@ function renderTips(c){
   $("tips").replaceChildren(...tips.map(t => el("li",{textContent:t})));
 }
 
+function nextLabel(item){
+  const p = state.profile || EMPTY;
+  const n = occurrences(p, todayStr, ymd(addDays(today, 62))).find(o => o.id === item.id);
+  return n ? "next " + parse(n.date).toLocaleString("en-US",{month:"short",day:"numeric"}) : "";
+}
 function renderFixed(p){
   const rows = [];
   const inc = p.income;
   if (state.editing){
     const amt = el("input",{type:"number",step:"0.01",value:inc.amount,style:"width:100px","aria-label":"Paycheck amount"});
-    const anc = el("input",{type:"date",value:inc.anchor||"","aria-label":"A recent payday"});
+    const anc = el("input",{type:"date",value:inc.anchor||"","aria-label":"A payday"});
     const save = el("button",{textContent:"Save"});
     save.onclick = () => saveProfile({...p, income:{...inc, amount:Number(amt.value)||0, anchor:anc.value}});
-    rows.push(el("div",{className:"row"}, el("span",{},"Paycheck (biweekly)", el("br"), el("span",{className:"muted",style:"font-size:13px"},"Last payday: ", anc)), amt, save, el("span")));
+    rows.push(el("div",{className:"row"}, el("span",{},"Paycheck (biweekly)", el("br"), el("span",{className:"muted",style:"font-size:13px"},"A payday: ", anc)), amt, save, el("span")));
   } else {
-    rows.push(el("div",{className:"row"}, el("strong",{textContent:"Paycheck"}), el("span",{className:"chip",textContent:inc.freq}), el("span",{className:"num pos",textContent:money(inc.amount)}), el("span")));
+    rows.push(el("div",{className:"row"}, el("strong",{textContent:"Paycheck"}), el("span",{className:"chip",textContent:inc.freq}), el("span",{className:"num pos",textContent:money(inc.amount)}), el("span",{className:"muted",style:"font-size:13px",textContent:nextLabel({id:"pay"})})));
   }
   p.fixed.forEach(f => {
     if (state.editing){
@@ -348,10 +459,12 @@ function renderFixed(p){
       amt.onchange = () => saveProfile({...p, fixed:p.fixed.map(x=>x.id===f.id?{...x,amount:Number(amt.value)||0}:x)});
       const del = el("button",{className:"link",textContent:"Remove"});
       del.onclick = () => saveProfile({...p, fixed:p.fixed.filter(x=>x.id!==f.id)});
-      rows.push(el("div",{className:"row"}, el("span",{textContent:f.name}), el("span",{className:"chip",textContent:f.freq}), amt, del));
+      const when = f.freq === "biweekly" || f.freq === "weekly" ? el("input",{type:"date",value:f.start||"","aria-label":f.name+" charge date",title:"Any date this bill comes out"}) : null;
+      if (when) when.onchange = () => saveProfile({...p, fixed:p.fixed.map(x=>x.id===f.id?{...x,start:when.value}:x)});
+      rows.push(el("div",{className:"row"}, el("span",{}, f.name, when ? el("br") : null, when), el("span",{className:"chip",textContent:f.freq}), amt, del));
     } else {
       rows.push(el("div",{className:"row"}, el("span",{textContent:f.name}), el("span",{className:"chip",textContent:f.freq}),
-        el("span",{className:"num",textContent:money(f.amount)}), el("span",{className:"muted num",style:"font-size:13px",textContent:f.freq!=="monthly"?`${money(monthly(f),0)}/mo`:""})));
+        el("span",{className:"num",textContent:money(f.amount)}), el("span",{className:"muted",style:"font-size:13px",textContent:nextLabel(f)})));
     }
   });
   $("fixed").replaceChildren(...rows);
@@ -412,7 +525,9 @@ Take-home pay: ${money(c.p.income.amount)} ${c.p.income.freq} (about ${money(c.s
 Extra income this month: ${c.extras.length ? c.extras.map(e=>`${money(e.amount)} ${e.category}${e.note?` (${e.note})`:""}`).join(", ") : "none"}.
 Fixed bills (monthly equivalent):
 ${c.p.fixed.map(f=>`- ${f.name}: ${money(f.amount)} ${f.freq} = ${money(monthly(f))}/mo [${f.category}]`).join("\n")}
-Total fixed: ${money(c.fixedTotal)}/mo (${Math.round(c.fixedTotal/c.salary*100)}% of regular take-home).
+Total fixed: ${money(c.fixedAvg)}/mo average (${Math.round(c.fixedAvg/c.salary*100)}% of regular take-home); ${money(c.fixedTotal)} actually scheduled in ${c.key}.
+Paychecks in ${c.key}: ${c.pay.length} (${money(sum(c.pay))}).
+${c.now != null ? `Checking account balance today: ${money(c.now)}; expected at end of ${c.key}: ${money(c.closing ?? c.now)}.` : ""}
 Month reviewed: ${c.key}${c.isCurrent?` (in progress, ${c.daysLeft} days left; on pace for ${money(c.projected)} everyday spend)`:""}.
 Everyday spending so far: ${money(c.spent)}. By category: ${Object.entries(c.byCat).map(([k,v])=>`${k} ${money(v)}`).join(", ") || "none logged yet"}.
 Largest expenses:
@@ -454,7 +569,7 @@ async function boot(){
   state.db = db;
   db.doc("budget/profile").onSnapshot(s => {
     const d = s.data();
-    state.profile = s.exists ? {...EMPTY, ...d, income:{...EMPTY.income, ...(d.income||{})}, fixed:d.fixed||[]} : null;
+    state.profile = s.exists ? {...EMPTY, ...d, income:{...EMPTY.income, ...(d.income||{})}, fixed:d.fixed||[], account:d.account||null} : null;
     state.loaded = true;
     status(s.exists ? "" : "Add your paycheck and fixed bills under “Paycheck & fixed bills” to get started.");
     render();
