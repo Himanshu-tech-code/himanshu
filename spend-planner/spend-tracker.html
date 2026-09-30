@@ -98,7 +98,7 @@ ul.tips li::marker{color:var(--accent)}
     <div><span class="label">Take-home</span><span class="big num" id="s-income">–</span><span class="sub" id="s-income-sub"></span></div>
     <div><span class="label">Fixed bills</span><span class="big num" id="s-fixed">–</span><span class="sub" id="s-fixed-sub"></span></div>
     <div><span class="label">Everyday spend</span><span class="big num" id="s-var">–</span><span class="sub" id="s-var-sub"></span></div>
-    <div><span class="label">Month surplus</span><span class="big num" id="s-left">–</span><span class="sub" id="s-left-sub"></span></div>
+    <div><span class="label" id="s-left-label">Month surplus</span><span class="big num" id="s-left">–</span><span class="sub" id="s-left-sub"></span></div>
   </section>
 
   <form class="add panel" id="add-form" autocomplete="off">
@@ -368,9 +368,15 @@ function render(){
   $("s-fixed-sub").textContent = `${c.bills.length} payments this month`;
   $("s-var").textContent = money(c.spent, 0);
   $("s-var-sub").textContent = c.isCurrent && c.projected !== c.spent ? `on pace for ${money(c.projected,0)}` : `${c.exp.length} expenses`;
-  $("s-left").textContent = money(c.left, 0);
-  $("s-left").className = "big num " + (c.left >= 0 ? "pos" : "neg");
-  $("s-left-sub").textContent = "this month's pay − bills − spending" + (c.isCurrent && c.projected !== c.spent ? " (projected)" : c.isFuture ? " (planned)" : "");
+  // Once the account balance is known, lead with where the balance ends the month; the surplus becomes the sub-line.
+  const endBal = c.closing;
+  const mShort = state.month.toLocaleString("en-US",{month:"short"});
+  $("s-left-label").textContent = endBal != null ? `Balance end of ${mShort}` : "Month surplus";
+  $("s-left").textContent = money(endBal ?? c.left, endBal != null ? 2 : 0);
+  $("s-left").className = "big num " + ((endBal ?? c.left) >= 0 ? "pos" : "neg");
+  $("s-left-sub").textContent = endBal != null
+    ? `${c.isCurrent || c.isFuture ? "expected" : "actual"} · this month's pay − bills − spending: ${money(c.spent ? c.income - c.fixedTotal - c.spent : c.left, 0)}`
+    : "this month's pay − bills − spending" + (c.isCurrent && c.projected !== c.spent ? " (projected)" : c.isFuture ? " (planned)" : "");
 
   // category bars
   const cats = Object.entries(c.byCat).sort((a,b)=>b[1]-a[1]);
@@ -394,7 +400,7 @@ function render(){
     return el("div",{className:"row" + (inc ? " income-row" : "")},
       el("span",{className:"muted num",textContent:d.toLocaleString("en-US",{month:"short",day:"numeric"})}),
       el("span",{style:"min-width:0;overflow-wrap:anywhere"}, e.note || e.category, " ", el("span",{className:"chip",textContent:e.category})),
-      el("span",{className:"num",textContent:(inc ? "+" : "") + money(e.amount)}), del);
+      el("span",{className:"num",textContent:(inc ? "+" : "−") + money(e.amount)}), del);
   }) : [el("p",{className:"muted",style:"margin:0",textContent:"Nothing here yet."})]));
 
   // goal
