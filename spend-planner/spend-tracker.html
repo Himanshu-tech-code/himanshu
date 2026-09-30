@@ -98,7 +98,7 @@ ul.tips li::marker{color:var(--accent)}
     <div><span class="label">Take-home</span><span class="big num" id="s-income">–</span><span class="sub" id="s-income-sub"></span></div>
     <div><span class="label">Fixed bills</span><span class="big num" id="s-fixed">–</span><span class="sub" id="s-fixed-sub"></span></div>
     <div><span class="label">Everyday spend</span><span class="big num" id="s-var">–</span><span class="sub" id="s-var-sub"></span></div>
-    <div><span class="label">Left over</span><span class="big num" id="s-left">–</span><span class="sub" id="s-left-sub"></span></div>
+    <div><span class="label">Month surplus</span><span class="big num" id="s-left">–</span><span class="sub" id="s-left-sub"></span></div>
   </section>
 
   <form class="add panel" id="add-form" autocomplete="off">
@@ -370,7 +370,7 @@ function render(){
   $("s-var-sub").textContent = c.isCurrent && c.projected !== c.spent ? `on pace for ${money(c.projected,0)}` : `${c.exp.length} expenses`;
   $("s-left").textContent = money(c.left, 0);
   $("s-left").className = "big num " + (c.left >= 0 ? "pos" : "neg");
-  $("s-left-sub").textContent = c.isCurrent ? "projected for the month" : c.isFuture ? "planned, before everyday spending" : "after everything";
+  $("s-left-sub").textContent = "this month's pay − bills − spending" + (c.isCurrent && c.projected !== c.spent ? " (projected)" : c.isFuture ? " (planned)" : "");
 
   // category bars
   const cats = Object.entries(c.byCat).sort((a,b)=>b[1]-a[1]);
