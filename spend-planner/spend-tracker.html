@@ -8,13 +8,16 @@
   --accent:#0d7556; --accent-ink:#ffffff; --need:#4a6fa5; --want:#c7802a; --bad:#bf3f38; --soft:#e7efeb;
   --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --c4:#eda100; --c5:#e87ba4; --c-other:#a9b3af; --c-bills:#5d6b65; --axis:#b9c4bf;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f1413; --surface:#171e1c; --ink:#e5ece8; --muted:#93a39c; --line:#2a3431;
-  --accent:#3fcf9b; --accent-ink:#05231a; --need:#86aee3; --want:#e9aa5e; --bad:#f07a70; --soft:#1d2724; color-scheme:dark}}
+  --accent:#3fcf9b; --accent-ink:#05231a; --need:#86aee3; --want:#e9aa5e; --bad:#f07a70; --soft:#1d2724; color-scheme:dark;
+  --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c-other:#5f6b67; --c-bills:#93a39c; --axis:#3a4642}}
 :root[data-theme="dark"]{
   --bg:#0f1413; --surface:#171e1c; --ink:#e5ece8; --muted:#93a39c; --line:#2a3431;
-  --accent:#3fcf9b; --accent-ink:#05231a; --need:#86aee3; --want:#e9aa5e; --bad:#f07a70; --soft:#1d2724; color-scheme:dark}
+  --accent:#3fcf9b; --accent-ink:#05231a; --need:#86aee3; --want:#e9aa5e; --bad:#f07a70; --soft:#1d2724; color-scheme:dark;
+  --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c-other:#5f6b67; --c-bills:#93a39c; --axis:#3a4642}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding-inline:16px;padding-block:20px 48px}
 .wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
@@ -67,6 +70,39 @@ ul.tips li::marker{color:var(--accent)}
 .ai{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.6}
 .inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .notice{background:var(--soft);border-radius:10px;padding:12px 14px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-radius:8px 8px 0 0;background:none;padding:10px 14px;color:var(--muted);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabpane{display:flex;flex-direction:column;gap:20px}
+.cat-row{display:grid;grid-template-columns:150px 1fr 104px 76px;gap:10px;align-items:center;font-size:14px;padding:3px 0;border-radius:6px}
+.cat-row:hover,.cat-row:focus-visible{background:var(--soft)}
+.cat-name{display:flex;align-items:center;gap:6px;min-width:0}
+i.sw{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;margin-right:6px;vertical-align:0}
+i.sw.sq{border-radius:2px}
+i.ln{display:inline-block;width:16px;height:2px;margin-right:6px;vertical-align:4px}
+i.ln.dash{background:repeating-linear-gradient(90deg,var(--c-other) 0 5px,transparent 5px 8px)}
+.chg{font-size:13px;text-align:right;color:var(--muted)} .chg.up{color:var(--bad)} .chg.down{color:var(--accent)}
+.mover{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.mover:first-child{border-top:0}
+.mv-icon{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:11px}
+.mv-icon.up{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.mv-icon.down{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+.chart{width:100%;min-width:0;overflow:hidden}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart path:focus-visible{outline:none;stroke:var(--ink)}
+.legend2{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.row.place{grid-template-columns:1fr auto auto}
+.tablewrap{overflow-x:auto}
+table.ins{width:100%;border-collapse:collapse;font-size:14px}
+table.ins th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.ins td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.ins tfoot td{font-weight:600;border-bottom:0}
+table.ins .r{text-align:right}
+#tip{position:fixed;z-index:10;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.14);font-size:13px;min-width:150px}
+.tip-title{color:var(--muted);font-size:12px;margin-bottom:4px}
+.tip-row{display:flex;align-items:center;gap:8px}
+.tip-row i{width:12px;height:2px;flex:none}
+@media (max-width:560px){.cat-row{grid-template-columns:110px 1fr 84px}.cat-row .chg{display:none}}
 .bal{font-family:var(--display);font-size:34px;font-weight:700;line-height:1.1}
 .balrow{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:6px 0;border-top:1px solid var(--line)}
 .row.future{opacity:.6}
@@ -93,6 +129,13 @@ ul.tips li::marker{color:var(--accent)}
   </header>
 
   <div id="status" class="notice" hidden></div>
+
+  <div class="tabs" role="tablist">
+    <button id="tabbtn-overview" role="tab" aria-selected="true">Overview</button>
+    <button id="tabbtn-insights" role="tab" aria-selected="false">Insights</button>
+  </div>
+
+  <div id="tab-overview" class="tabpane">
 
   <section class="strip" aria-label="Month summary">
     <div><span class="label">Take-home</span><span class="big num" id="s-income">–</span><span class="sub" id="s-income-sub"></span></div>
@@ -180,7 +223,43 @@ ul.tips li::marker{color:var(--accent)}
       </section>
     </div>
   </div>
+  </div>
+
+  <div id="tab-insights" class="tabpane" hidden>
+    <div class="inline" style="justify-content:space-between">
+      <div class="seg" role="group" aria-label="What to include"><button type="button" id="sc-everyday" aria-pressed="true">Everyday spending</button><button type="button" id="sc-all" aria-pressed="false">Include fixed bills</button></div>
+      <span class="muted" style="font-size:14px" id="ins-note"></span>
+    </div>
+    <p id="ins-empty" class="notice" hidden>Log a few expenses and this tab will show where your money goes and how it changes month to month.</p>
+    <div id="ins-body" class="tabpane">
+      <section class="strip" aria-label="Spending summary">
+        <div><span class="label">Spent</span><span class="big num" id="k-total">–</span><span class="sub" id="k-total-sub"></span></div>
+        <div><span class="label">Vs last month</span><span class="big num" id="k-delta">–</span><span class="sub" id="k-delta-sub"></span></div>
+        <div><span class="label">Daily average</span><span class="big num" id="k-daily">–</span><span class="sub" id="k-daily-sub"></span></div>
+        <div><span class="label">Biggest category</span><span class="big" id="k-top" style="font-size:20px">–</span><span class="sub" id="k-top-sub"></span></div>
+      </section>
+      <div class="grid2">
+        <section class="panel"><h2>Where the money goes</h2><div id="ins-cats" class="list"></div></section>
+        <section class="panel"><h2>Biggest changes vs last month</h2><div id="ins-movers"></div></section>
+      </div>
+      <section class="panel">
+        <div class="inline" style="justify-content:space-between"><h2>Monthly trend</h2><div class="legend2" id="trend-legend"></div></div>
+        <div class="chart" id="trend"></div>
+        <div class="muted" style="font-size:13px"><span id="trend-note"></span> * month in progress.</div>
+      </section>
+      <div class="grid2">
+        <section class="panel">
+          <div class="inline" style="justify-content:space-between"><h2>Spending pace</h2><div class="legend2" id="pace-legend"></div></div>
+          <div class="chart" id="pace"></div>
+          <div class="muted" style="font-size:13px">Running total by day of the month. If this month's line sits above last month's, you're spending faster.</div>
+        </section>
+        <section class="panel"><h2>Where you spend most</h2><div id="ins-places" class="list"></div></section>
+      </div>
+      <section class="panel"><h2>By category</h2><div class="tablewrap"><table class="ins" id="ins-table"></table></div></section>
+    </div>
+  </div>
 </div>
+<div id="tip" hidden></div>
 <div id="toast" hidden></div>
 
 <script>
@@ -208,7 +287,7 @@ const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
 function el(tag, props={}, ...kids){const n=Object.assign(document.createElement(tag),props);kids.forEach(k=>k!=null&&n.append(k));return n;}
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,2600);}
 
-const today = new Date();
+let today = new Date();
 const state = { db:null, profile:null, loaded:false, expenses:[], month:new Date(today.getFullYear(), today.getMonth(), 1), editing:false };
 const EMPTY = {income:{amount:0,freq:"biweekly",anchor:""}, fixed:[], goal:300};
 
@@ -242,7 +321,7 @@ const parse = str => new Date(str + "T12:00:00");
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const lastDay = (y, m) => new Date(y, m + 1, 0, 12);
 const sum = xs => xs.reduce((t, x) => t + x.amount, 0);
-const todayStr = ymd(today);
+let todayStr = ymd(today);
 
 // Every scheduled paycheck and bill between two dates (inclusive). Biweekly/weekly items repeat
 // from their `start` date; monthly items post on their `day` of the month, or the last day if none is set.
@@ -416,6 +495,7 @@ function render(){
     (c.weekly != null ? ` That leaves ${money(Math.max(0,c.weekly),0)} a week for the rest of the month.` : "");
 
   renderAccount(c);
+  if (activeTab === "insights") renderInsights(c);
   renderTips(c);
   renderFixed(p);
 }
@@ -572,6 +652,251 @@ ${$("ai-q").value.trim() ? "Answer to their question: 1-3 sentences." : ""}`;
     }
   };
 }
+
+// ---------- insights tab ----------
+let activeTab = "overview", scope = "everyday";
+try { if (localStorage.getItem("tab") === "insights") activeTab = "insights"; } catch {}
+function setTab(t){
+  activeTab = t;
+  $("tab-overview").hidden = t !== "overview"; $("tab-insights").hidden = t !== "insights";
+  $("tabbtn-overview").setAttribute("aria-selected", t === "overview"); $("tabbtn-insights").setAttribute("aria-selected", t === "insights");
+  try { localStorage.setItem("tab", t); } catch {}
+  render();
+}
+$("tabbtn-overview").onclick = () => setTab("overview");
+$("tabbtn-insights").onclick = () => setTab("insights");
+$("sc-everyday").onclick = () => { scope = "everyday"; render(); };
+$("sc-all").onclick = () => { scope = "all"; render(); };
+
+const SLOT = ["var(--c1)","var(--c2)","var(--c3)","var(--c4)","var(--c5)"];
+const short = v => v >= 1000 ? "$" + (v/1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/,"") + "k" : "$" + Math.round(v);
+const monthOf = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
+const mLong = d => d.toLocaleString("en-US",{month:"long"});
+const mShortName = d => d.toLocaleString("en-US",{month:"short"});
+const NS = "http://www.w3.org/2000/svg";
+function s(tag, attrs = {}, style = ""){ const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (style) n.setAttribute("style", style); return n; }
+function stext(x, y, str, style, anchor = "start"){ const t = s("text",{x, y, "text-anchor":anchor}, style); t.textContent = str; return t; }
+
+// Spending items for a month (expenses, plus bills when scope is "all"), optionally only days 1..uptoDay.
+function spendItems(p, ms, uptoDay){
+  const y = ms.getFullYear(), m = ms.getMonth(), ld = lastDay(y, m).getDate();
+  const first = ymd(new Date(y, m, 1, 12)), end = ymd(new Date(y, m, Math.min(uptoDay || ld, ld), 12));
+  const items = state.expenses.filter(e => e.type !== "income" && e.date >= first && e.date <= end)
+    .map(e => ({date:e.date, amount:e.amount, category:e.category || "Other", label:e.note || e.category}));
+  if (scope === "all") occurrences(p, first, end).filter(o => o.kind === "bill")
+    .forEach(o => items.push({date:o.date, amount:o.amount, category:o.category || "Bills & Utilities", label:o.name, bill:true}));
+  return items;
+}
+const byCategory = items => items.reduce((o, i) => (o[i.category] = (o[i.category] || 0) + i.amount, o), {});
+// Colour follows the category: slots go to the 5 biggest everyday categories across all history, so they never repaint.
+function colorMap(){
+  const tot = byCategory(state.expenses.filter(e => e.type !== "income").map(e => ({amount:e.amount, category:e.category || "Other"})));
+  const top = Object.entries(tot).sort((a,b) => b[1]-a[1]).slice(0,5).map(x => x[0]);
+  return {top, color: cat => top.includes(cat) ? SLOT[top.indexOf(cat)] : "var(--c-other)"};
+}
+
+const tip = () => $("tip");
+function showTip(x, y, title, rows){
+  const t = tip(); t.replaceChildren(el("div",{className:"tip-title",textContent:title}),
+    ...rows.map(r => el("div",{className:"tip-row"}, el("i",{style:`background:${r.color}`}), el("b",{className:"num",textContent:r.value}), el("span",{textContent:r.label}))));
+  t.hidden = false;
+  const w = t.offsetWidth, h = t.offsetHeight;
+  t.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, x + 14)) + "px";
+  t.style.top = Math.max(8, y - h - 10) + "px";
+}
+const hideTip = () => { tip().hidden = true; };
+function hoverable(node, getTip){
+  node.setAttribute("tabindex","0");
+  node.addEventListener("pointermove", e => { const [title, rows] = getTip(); showTip(e.clientX, e.clientY, title, rows); });
+  node.addEventListener("focus", () => { const r = node.getBoundingClientRect(); const [title, rows] = getTip(); showTip(r.left + r.width/2, r.top, title, rows); });
+  node.addEventListener("pointerleave", hideTip); node.addEventListener("blur", hideTip);
+}
+function niceTicks(max){
+  const raw = max / 4, mag = 10 ** Math.floor(Math.log10(raw || 1));
+  const step = [1,2,2.5,5,10].map(x => x * mag).find(x => x >= raw);
+  const out = []; let v = 0; do { out.push(v); v += step; } while (out[out.length-1] < max); return out;
+}
+
+function renderInsights(c){
+  const p = c.p, M = state.month, P = monthOf(M, -1);
+  const partial = c.isCurrent ? today.getDate() : null;
+  const cur = spendItems(p, M, partial), prev = spendItems(p, P, partial), prevFull = spendItems(p, P);
+  const curCat = byCategory(cur), prevCat = byCategory(prev);
+  const total = sum(cur), prevTotal = sum(prev);
+  const {top, color} = colorMap();
+  const period = partial ? `${mShortName(P)} 1–${Math.min(partial, lastDay(P.getFullYear(), P.getMonth()).getDate())}` : mLong(P);
+  $("sc-everyday").setAttribute("aria-pressed", scope === "everyday"); $("sc-all").setAttribute("aria-pressed", scope === "all");
+  $("ins-note").textContent = partial ? `${mLong(M)} so far (1–${partial}), compared with the same days of ${mLong(P)}` : `${mLong(M)} compared with ${mLong(P)}`;
+  const hasAny = state.expenses.some(e => e.type !== "income");
+  $("ins-empty").hidden = hasAny; $("ins-body").hidden = !hasAny;
+  if (!hasAny) return;
+
+  // KPIs
+  const days = partial || lastDay(M.getFullYear(), M.getMonth()).getDate();
+  const prevDays = lastDay(P.getFullYear(), P.getMonth()).getDate();
+  const delta = total - prevTotal;
+  const cats = Object.entries(curCat).sort((a,b) => b[1]-a[1]);
+  $("k-total").textContent = money(total, 0);
+  $("k-total-sub").textContent = `${cur.length} ${cur.length === 1 ? "payment" : "payments"}${scope === "all" ? " incl. bills" : ""}`;
+  $("k-delta").textContent = prevTotal ? (delta >= 0 ? "▲ " : "▼ ") + money(Math.abs(delta), 0) : "–";
+  $("k-delta").className = "big num " + (!prevTotal ? "" : delta > 0 ? "neg" : "pos");
+  $("k-delta-sub").textContent = prevTotal ? `${delta >= 0 ? "more" : "less"} than ${period} (${money(prevTotal,0)}${prevTotal ? `, ${delta >= 0 ? "+" : "−"}${Math.round(Math.abs(delta)/prevTotal*100)}%` : ""})` : `nothing logged for ${period}`;
+  $("k-daily").textContent = money(total / days, 0);
+  $("k-daily-sub").textContent = `per day · ${mLong(P)} was ${money(sum(prevFull) / prevDays, 0)}/day`;
+  $("k-top").textContent = cats.length ? cats[0][0] : "–";
+  $("k-top-sub").textContent = cats.length ? `${money(cats[0][1],0)} · ${Math.round(cats[0][1]/total*100)}% of spending` : "no spending yet";
+
+  // Where the money goes
+  const maxC = Math.max(1, ...cats.map(x => x[1]));
+  $("ins-cats").replaceChildren(...(cats.length ? cats.map(([cat, v]) => {
+    const d = v - (prevCat[cat] || 0);
+    const i = el("i"); i.style.width = v/maxC*100 + "%"; i.style.background = color(cat);
+    const row = el("div",{className:"cat-row"},
+      el("span",{className:"cat-name"}, el("i",{className:"sw",style:`background:${color(cat)}`}), cat),
+      el("div",{className:"track"}, i),
+      el("span",{className:"num",style:"text-align:right"}, money(v), el("small",{className:"muted",textContent:` ${Math.round(v/total*100)}%`})),
+      el("span",{className:"num chg " + (d > 0.005 ? "up" : d < -0.005 ? "down" : ""),textContent: !prevCat[cat] ? "new" : Math.abs(d) < 0.005 ? "same" : (d > 0 ? "▲ " : "▼ ") + money(Math.abs(d),0)}));
+    hoverable(row, () => [cat, [{label:mLong(M) + (partial ? " so far" : ""), value:money(v), color:color(cat)}, {label:period, value:money(prevCat[cat]||0), color:"var(--c-other)"}]]);
+    return row;
+  }) : [el("p",{className:"muted",style:"margin:0",textContent:"No spending logged for this month yet."})]));
+
+  // Biggest changes
+  const allCats = [...new Set([...Object.keys(curCat), ...Object.keys(prevCat)])];
+  const movers = allCats.map(k => [k, (curCat[k]||0) - (prevCat[k]||0)]).filter(x => Math.abs(x[1]) >= 0.5).sort((a,b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0,6);
+  $("ins-movers").replaceChildren(...(movers.length ? movers.map(([k, d]) => {
+    const was = prevCat[k] || 0, now = curCat[k] || 0;
+    return el("div",{className:"mover"},
+      el("span",{className:"mv-icon " + (d > 0 ? "up" : "down"),textContent: d > 0 ? "▲" : "▼","aria-hidden":"true"}),
+      el("div",{}, el("strong",{textContent:k}), el("div",{className:"muted",style:"font-size:13px",textContent:`${money(was,0)} → ${money(now,0)}${was ? ` (${d > 0 ? "+" : "−"}${Math.round(Math.abs(d)/was*100)}%)` : " · new this month"}`})),
+      el("span",{className:"num " + (d > 0 ? "neg" : "pos"),textContent:`${d > 0 ? "up" : "down"} ${money(Math.abs(d),0)}`}));
+  }) : [el("p",{className:"muted",style:"margin:0",textContent:`No change from ${period} yet.`})]));
+
+  // Monthly trend (last 6 months ending at the selected month)
+  const months = Array.from({length:6}, (_, i) => monthOf(M, i - 5));
+  const series = [...(scope === "all" ? [{key:"__bills", name:"Fixed bills", color:"var(--c-bills)"}] : []),
+                  ...top.map(k => ({key:k, name:k, color:color(k)})), {key:"__other", name:"All other categories", color:"var(--c-other)"}];
+  let cols = months.map(ms => {
+    const isCur = monthKey(ms) === monthKey(today);
+    const items = spendItems(p, ms, isCur ? today.getDate() : null);
+    const v = {};
+    items.forEach(it => { const k = it.bill ? "__bills" : top.includes(it.category) ? it.category : "__other"; v[k] = (v[k]||0) + it.amount; });
+    return {ms, v, isCur, total: sum(items)};
+  });
+  const firstWithData = cols.findIndex(c => c.total > 0);
+  if (firstWithData > 0) cols = cols.slice(Math.min(firstWithData, cols.length - 2));
+  $("trend-legend").replaceChildren(...series.map(sr => el("span",{}, el("i",{className:"sw sq",style:`background:${sr.color}`}), sr.name)));
+  stackedColumns($("trend"), cols, series, scope === "everyday" ? Math.max(0, c.salary - c.fixedAvg - c.goal) : null);
+  const lastTwo = cols.slice(-2);
+  $("trend-note").textContent = lastTwo[0].total ? `${mLong(M)}${lastTwo[1].isCur ? " so far" : ""}: ${money(lastTwo[1].total,0)} vs ${money(lastTwo[0].total,0)} in ${mLong(lastTwo[0].ms)}.` : "Trend fills in as you log more months.";
+
+  // Spending pace (cumulative by day)
+  const cum = (items, upto) => { const daily = Array(32).fill(0); items.forEach(i => daily[+i.date.slice(8,10)] += i.amount); const out = []; let t = 0; for (let d = 1; d <= upto; d++){ t += daily[d]; out.push(t); } return out; };
+  const curDays = partial || lastDay(M.getFullYear(), M.getMonth()).getDate();
+  paceChart($("pace"), cum(spendItems(p, M, partial), curDays), cum(prevFull, prevDays), mShortName(M), mShortName(P), Math.max(curDays, prevDays, partial ? lastDay(M.getFullYear(), M.getMonth()).getDate() : 0));
+  $("pace-legend").replaceChildren(el("span",{}, el("i",{className:"ln",style:"background:var(--c1)"}), mLong(M)), el("span",{}, el("i",{className:"ln dash"}), mLong(P)));
+
+  // Where you spend most often
+  const groups = {};
+  cur.forEach(i => { const k = (i.label || i.category).trim().toLowerCase(); (groups[k] ||= {name:(i.label || i.category).trim(), n:0, t:0, cat:i.category}); groups[k].n++; groups[k].t += i.amount; });
+  const places = Object.values(groups).sort((a,b) => b.t - a.t).slice(0,8);
+  $("ins-places").replaceChildren(...(places.length ? places.map(g => el("div",{className:"row place"},
+    el("span",{style:"min-width:0;overflow-wrap:anywhere"}, g.name, " ", el("span",{className:"chip",textContent:g.cat})),
+    el("span",{className:"muted num",style:"font-size:13px",textContent:g.n > 1 ? `${g.n}× · avg ${money(g.t/g.n)}` : "1×"}),
+    el("span",{className:"num",textContent:money(g.t)}))) : [el("p",{className:"muted",style:"margin:0",textContent:"Nothing logged yet."})]));
+
+  // Table view
+  const ms3 = [monthOf(M,-1), monthOf(M,-2), monthOf(M,-3)].map(ms => byCategory(spendItems(p, ms)));
+  const tcats = [...new Set([...Object.keys(curCat), ...Object.keys(prevCat), ...ms3.flatMap(Object.keys)])]
+    .sort((a,b) => (curCat[b]||0) - (curCat[a]||0) || (prevCat[b]||0) - (prevCat[a]||0));
+  $("ins-table").replaceChildren(
+    el("thead",{}, el("tr",{}, ...["Category", mLong(M) + (partial ? " so far" : ""), period, "Change", "3-month avg", "Share"].map((h,i) => el("th",{className:i ? "r" : "",textContent:h})))),
+    el("tbody",{}, ...tcats.map(k => { const a = curCat[k]||0, b = prevCat[k]||0, avg = ms3.reduce((t,o)=>t+(o[k]||0),0)/3, d = a - b;
+      return el("tr",{}, el("td",{}, el("i",{className:"sw",style:`background:${color(k)}`}), k), el("td",{className:"r num",textContent:money(a)}), el("td",{className:"r num",textContent:money(b)}),
+        el("td",{className:"r num " + (d > 0.005 ? "neg" : d < -0.005 ? "pos" : ""),textContent:Math.abs(d) < 0.005 ? "–" : (d > 0 ? "+" : "−") + money(Math.abs(d))}),
+        el("td",{className:"r num",textContent:money(avg)}), el("td",{className:"r num",textContent:total ? Math.round(a/total*100) + "%" : "–"})); })),
+    el("tfoot",{}, el("tr",{}, el("td",{textContent:"Total"}), el("td",{className:"r num",textContent:money(total)}), el("td",{className:"r num",textContent:money(prevTotal)}),
+      el("td",{className:"r num",textContent:(delta >= 0 ? "+" : "−") + money(Math.abs(delta))}), el("td"), el("td"))));
+}
+
+function stackedColumns(host, cols, series, budget){
+  const W = Math.max(300, host.clientWidth || 600), H = 250, m = {t:24, r:12, b:30, l:44};
+  const maxTot = Math.max(1, ...cols.map(c => c.total));
+  const showBudget = budget && budget < maxTot * 3;
+  const ticks = niceTicks(Math.max(maxTot, showBudget ? budget : 0)), top = ticks[ticks.length-1];
+  const y = v => m.t + (H - m.t - m.b) * (1 - v/top);
+  const band = (W - m.l - m.r) / cols.length, bw = Math.min(48, band * 0.55);
+  const svg = s("svg",{viewBox:`0 0 ${W} ${H}`, width:W, height:H, role:"img", "aria-label":"Monthly spending by category"});
+  ticks.forEach(t => { svg.append(s("line",{x1:m.l, x2:W-m.r, y1:y(t), y2:y(t)}, `stroke:${t ? "var(--line)" : "var(--axis)"};stroke-width:1`));
+    svg.append(stext(m.l - 8, y(t) + 4, short(t), "fill:var(--muted);font-size:11px", "end")); });
+  cols.forEach((c, i) => {
+    const cx = m.l + band * i + band/2, x = cx - bw/2;
+    let acc = 0; const segs = series.filter(sr => (c.v[sr.key]||0) > 0);
+    segs.forEach((sr, j) => {
+      const v = c.v[sr.key], y0 = y(acc), y1 = y(acc + v); acc += v;
+      const h = Math.max(0, y0 - y1), r = j === segs.length - 1 ? Math.min(4, h, bw/2) : 0;
+      const d = `M${x},${y0} V${y1 + r} Q${x},${y1} ${x + r},${y1} H${x + bw - r} Q${x + bw},${y1} ${x + bw},${y1 + r} V${y0} Z`;
+      const seg = s("path",{d}, `fill:${sr.color};stroke:var(--surface);stroke-width:2;cursor:default`);
+      hoverable(seg, () => [`${mLong(c.ms)}${c.isCur ? " so far" : ""}`, [{label:sr.name, value:money(v), color:sr.color}, {label:"Month total", value:money(c.total), color:"transparent"}]]);
+      svg.append(seg);
+    });
+    if (c.total) svg.append(stext(cx, y(c.total) - 6, short(c.total), "fill:var(--ink);font-size:11px;font-weight:600", "middle"));
+    svg.append(stext(cx, H - m.b + 18, mShortName(c.ms) + (c.isCur ? "*" : ""), `fill:${monthKey(c.ms) === monthKey(state.month) ? "var(--ink)" : "var(--muted)"};font-size:12px;${monthKey(c.ms) === monthKey(state.month) ? "font-weight:600" : ""}`, "middle"));
+  });
+  if (showBudget){
+    svg.append(s("line",{x1:m.l, x2:W-m.r, y1:y(budget), y2:y(budget)}, "stroke:var(--ink);stroke-width:1.5;stroke-dasharray:5 4;opacity:.7"));
+    svg.append(stext(m.l + 6, y(budget) - 6, `Everyday budget ${short(budget)}`, "fill:var(--muted);font-size:11px"));
+  }
+  host.replaceChildren(svg);
+}
+
+function paceChart(host, curSeries, prevSeries, curName, prevName, maxDay){
+  const W = Math.max(300, host.clientWidth || 500), H = 220, m = {t:16, r:56, b:28, l:44};
+  const maxV = Math.max(1, ...curSeries, ...prevSeries);
+  const ticks = niceTicks(maxV), top = ticks[ticks.length-1];
+  const x = d => m.l + (W - m.l - m.r) * (d - 1) / Math.max(1, maxDay - 1);
+  const y = v => m.t + (H - m.t - m.b) * (1 - v/top);
+  const svg = s("svg",{viewBox:`0 0 ${W} ${H}`, width:W, height:H, role:"img", "aria-label":"Cumulative spending by day of month"});
+  ticks.forEach(t => { svg.append(s("line",{x1:m.l, x2:W-m.r, y1:y(t), y2:y(t)}, `stroke:${t ? "var(--line)" : "var(--axis)"};stroke-width:1`));
+    svg.append(stext(m.l - 8, y(t) + 4, short(t), "fill:var(--muted);font-size:11px", "end")); });
+  [1, 8, 15, 22, maxDay].forEach(d => svg.append(stext(x(d), H - m.b + 18, String(d), "fill:var(--muted);font-size:11px", "middle")));
+  const path = arr => arr.map((v, i) => `${i ? "L" : "M"}${x(i+1).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  if (prevSeries.length) svg.append(s("path",{d:path(prevSeries)}, "fill:none;stroke:var(--c-other);stroke-width:2;stroke-dasharray:5 4"));
+  if (curSeries.length) svg.append(s("path",{d:path(curSeries)}, "fill:none;stroke:var(--c1);stroke-width:2;stroke-linejoin:round"));
+  const endLabel = (arr, name, style) => { if (!arr.length) return; const d = arr.length, v = arr[d-1];
+    svg.append(s("circle",{cx:x(d), cy:y(v), r:4}, `fill:${style};stroke:var(--surface);stroke-width:2`));
+    const nearEnd = x(d) > W - m.r - 30;
+    svg.append(stext(x(d) + (nearEnd ? -8 : 8), y(v) + (nearEnd ? -8 : 4), `${name} ${short(v)}`, "fill:var(--ink);font-size:11px;font-weight:600", nearEnd ? "end" : "start")); };
+  endLabel(prevSeries, prevName, "var(--c-other)"); endLabel(curSeries, curName, "var(--c1)");
+  // crosshair
+  const cross = s("line",{y1:m.t, y2:H - m.b}, "stroke:var(--muted);stroke-width:1;opacity:0"); svg.append(cross);
+  const hit = s("rect",{x:m.l, y:m.t, width:W - m.l - m.r, height:H - m.t - m.b}, "fill:transparent;cursor:crosshair"); svg.append(hit);
+  hit.addEventListener("pointermove", e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width;
+    const d = Math.min(maxDay, Math.max(1, Math.round(1 + (px - m.l) / (W - m.l - m.r) * (maxDay - 1))));
+    cross.setAttribute("x1", x(d)); cross.setAttribute("x2", x(d)); cross.style.opacity = 1;
+    const rows = [];
+    if (curSeries[d-1] != null) rows.push({label:`${curName} by day ${d}`, value:money(curSeries[d-1]), color:"var(--c1)"});
+    if (prevSeries[d-1] != null) rows.push({label:`${prevName} by day ${d}`, value:money(prevSeries[d-1]), color:"var(--c-other)"});
+    showTip(e.clientX, e.clientY, `Day ${d}`, rows);
+  });
+  hit.addEventListener("pointerleave", () => { cross.style.opacity = 0; hideTip(); });
+  host.replaceChildren(svg);
+}
+let resizeT; window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => activeTab === "insights" && render(), 150); });
+
+// ---------- follow the calendar ----------
+function refreshToday(){
+  const now = new Date(), prevStr = todayStr, prevKey = monthKey(today);
+  if (ymd(now) === prevStr) return;
+  today = now; todayStr = ymd(now);
+  if (monthKey(now) !== prevKey) state.month = new Date(now.getFullYear(), now.getMonth(), 1);
+  if ($("f-date").value === prevStr) $("f-date").value = todayStr;
+  render();
+}
+setInterval(refreshToday, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshToday(); });
+window.addEventListener("focus", refreshToday);
+setTab(activeTab);
 
 // ---------- boot ----------
 function status(msg){ $("status").hidden = !msg; $("status").textContent = msg || ""; }
