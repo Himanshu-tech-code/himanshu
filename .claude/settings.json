@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 .claude/skills/trader-alerts/alerts.py *)",
+      "Bash(python3 .claude/skills/trader-news/news.py *)",
+      "Bash(python3 .claude/skills/trader-analyst/facts.py *)",
+      "Bash(python3 .claude/skills/trader-scanner/scan.py *)",
+      "Bash(python3 .claude/skills/trader-entry/entry.py *)",
+      "Bash(python3 .claude/skills/trader-exit/exit.py *)",
+      "Bash(python3 .claude/skills/trader-timemachine/timemachine.py *)",
+      "Bash(python3 .claude/skills/trader-budget/size.py *)",
+      "Bash(python3 .claude/skills/trader-risk/check.py *)"
+    ],
+    "deny": [
+      "Bash(python3 .claude/skills/trader-broker/ticket.py approve *)"
+    ]
+  }
+}
