@@ -9,7 +9,8 @@
       "Bash(python3 .claude/skills/trader-exit/exit.py *)",
       "Bash(python3 .claude/skills/trader-timemachine/timemachine.py *)",
       "Bash(python3 .claude/skills/trader-budget/size.py *)",
-      "Bash(python3 .claude/skills/trader-risk/check.py *)"
+      "Bash(python3 .claude/skills/trader-risk/check.py *)",
+      "Bash(python3 .claude/skills/trader-report/report.py *)"
     ],
     "deny": [
       "Bash(python3 .claude/skills/trader-broker/ticket.py approve *)"
